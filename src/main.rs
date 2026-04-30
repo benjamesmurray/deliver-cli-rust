@@ -23,7 +23,13 @@ async fn main() -> Result<()> {
     // Path to OpenAPI spec - adjust as needed for distribution
     let spec_env = std::env::var("SPEC_PATH").unwrap_or_else(|_| "legacy_deliver/api/spec-workflow.openapi.yaml".to_string());
     let spec_path = Path::new(&spec_env);
-    let loader = OpenApiLoader::load(spec_path)?;
+    let loader = match OpenApiLoader::load(spec_path) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Warning: Failed to load OpenAPI spec from {}: {}. Falling back to empty configuration.", spec_env, e);
+            OpenApiLoader::empty()
+        }
+    };
     let manager = SpecManager;
 
     match cli.command {

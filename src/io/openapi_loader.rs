@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct OpenApiSpec {
     pub info: Info,
     #[serde(rename = "x-global-config")]
@@ -17,33 +17,33 @@ pub struct OpenApiSpec {
     pub task_guidance_template: Option<TaskGuidanceTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Info {
     pub title: String,
     pub version: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct GlobalConfig {
     pub stage_names: HashMap<String, String>,
     pub file_names: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct DocumentTemplate {
     pub title: String,
     pub sections: Vec<TemplateSection>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct TemplateSection {
     pub name: String,
     pub content: Option<String>,
     pub placeholder: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SharedResource {
     pub uri: String,
     pub title: Option<String>,
@@ -52,7 +52,7 @@ pub struct SharedResource {
     pub text: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct TaskGuidanceTemplate {
     pub separator: String,
     pub header: String,
@@ -71,6 +71,12 @@ impl OpenApiLoader {
         let content = fs::read_to_string(spec_path)?;
         let spec: OpenApiSpec = serde_yaml::from_str(&content)?;
         Ok(Self { spec })
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            spec: OpenApiSpec::default(),
+        }
     }
 
     pub fn get_file_name(&self, stage: &str) -> Option<&String> {
