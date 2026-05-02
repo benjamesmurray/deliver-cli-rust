@@ -38,6 +38,13 @@ pub struct ScApprove {
     pub feature: Option<String>,
 }
 
+#[macros::mcp_tool(name = "sc_todo_start", description = "Mark a task as being actively worked on")]
+#[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
+pub struct ScTodoStart {
+    pub id: String,
+    pub feature: Option<String>,
+}
+
 #[macros::mcp_tool(name = "sc_todo_complete", description = "Complete a task")]
 #[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
 pub struct ScTodoComplete {
@@ -105,6 +112,7 @@ impl ServerHandler for DeliverServerHandler {
                 ScInit::tool(),
                 ScPlan::tool(),
                 ScApprove::tool(),
+                ScTodoStart::tool(),
                 ScTodoComplete::tool(),
             ],
             meta: None,
@@ -140,6 +148,12 @@ impl ServerHandler for DeliverServerHandler {
                 let args: ScApprove = serde_json::from_value(serde_json::Value::Object(params.arguments.unwrap_or_default()))
                     .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
                 self.manager.approve(&self.base_dir, args.feature.as_deref(), &self.loader)
+                    .map_err(|e| CallToolError::from_message(e.to_string()))?
+            }
+            "sc_todo_start" => {
+                let args: ScTodoStart = serde_json::from_value(serde_json::Value::Object(params.arguments.unwrap_or_default()))
+                    .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
+                self.manager.start_task(&self.base_dir, args.feature.as_deref(), &args.id, &self.loader)
                     .map_err(|e| CallToolError::from_message(e.to_string()))?
             }
             "sc_todo_complete" => {

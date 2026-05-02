@@ -67,7 +67,8 @@ async fn main() -> Result<()> {
                     println!("{}", manager.get_status_summary(&base_dir, feature.as_deref(), &loader));
                 }
                 TodoAction::Start { id, feature } => {
-                    println!("🚀 Task {} marked as IN PROGRESS.", id);
+                    let output = manager.start_task(&base_dir, feature.as_deref(), &id, &loader)?;
+                    println!("{}", output);
                     println!("\n{}", manager.get_status_summary(&base_dir, feature.as_deref(), &loader));
                 }
                 TodoAction::Complete { id, feature } => {

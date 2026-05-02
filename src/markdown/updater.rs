@@ -5,9 +5,14 @@ pub struct MarkdownTaskUpdater;
 
 impl MarkdownTaskUpdater {
     pub fn update_task_status(content: &str, task_id: &str, completed: bool) -> String {
+        let status = if completed { 'x' } else { ' ' };
+        Self::update_task_status_char(content, task_id, status)
+    }
+
+    pub fn update_task_status_char(content: &str, task_id: &str, status: char) -> String {
         let mut tasks_to_update = vec![task_id.to_string()];
 
-        if completed && task_id.contains('.') {
+        if status == 'x' && task_id.contains('.') {
             let flat_tasks = TaskParser::parse_flat(content);
             let mut current_id = task_id.to_string();
 
@@ -40,16 +45,16 @@ impl MarkdownTaskUpdater {
         }
 
         let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
-        let new_status = if completed { "x" } else { " " };
 
         for id in tasks_to_update {
-            let re = Regex::new(&format!(r"^(\s*)-\s*\[([ xX])\]\s+({})\.?\s*(.*)$", regex::escape(&id))).unwrap();
+            let re = Regex::new(&format!(r"(?P<indent>\s*-\s*\[)[ xX/](?P<suffix>\]\s+){}(?P<dot>\.?)(?P<rest>.*)$", regex::escape(&id))).unwrap();
             for line in lines.iter_mut() {
                 if let Some(caps) = re.captures(line) {
-                    let indent = &caps[1];
-                    let id_val = &caps[3];
-                    let text = &caps[4];
-                    *line = format!("{}- [{}] {}. {}", indent, new_status, id_val, text);
+                    let indent = &caps["indent"];
+                    let suffix = &caps["suffix"];
+                    let dot = &caps["dot"];
+                    let rest = &caps["rest"];
+                    *line = format!("{}{}{}{}{}{}", indent, status, suffix, id, dot, rest);
                     break;
                 }
             }

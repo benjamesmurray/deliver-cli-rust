@@ -6,7 +6,7 @@ A streamlined Model Context Protocol (MCP) server and CLI tool for managing a sp
 
 - **Workflow Orchestration:** Define and enforce structured development phases using Markdown.
 - **MCP Server:** Exposes tools for AI agents (like Claude or Cursor) to automatically scaffold, edit, and verify project specifications.
-- **Task Management:** Automatically tracks and updates task completion statuses within nested checklists.
+- **Task Management:** Automatically tracks and updates task statuses (Pending `[ ]`, In Progress `[/]`, Completed `[x]`) within nested checklists.
 - **Approval Gates:** Ensures human review before advancing to the next implementation phase.
 
 ## Installation

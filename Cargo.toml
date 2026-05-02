@@ -1,6 +1,6 @@
 [package]
 name = "deliver-cli"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 description = "Streamlined MCP server for managing spec workflow (requirements, design, implementation)"
 license = "MIT"

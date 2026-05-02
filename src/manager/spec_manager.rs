@@ -328,6 +328,27 @@ impl SpecManager {
         Ok(format!("Successfully archived project to {}.", rel_target.to_string_lossy()))
     }
 
+    pub fn start_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {
+        let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
+        let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
+        let tasks_path = feature_path.join(tasks_file);
+
+        if !tasks_path.exists() {
+            return Err(anyhow!("tasks.md file does not exist. Please complete writing the tasks document first."));
+        }
+
+        let content = fs::read_to_string(&tasks_path)?;
+        let flat_tasks = crate::markdown::parser::TaskParser::parse_flat(&content);
+
+        let _task = flat_tasks.iter().find(|t| t.id == task_id)
+            .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
+
+        let updated_content = crate::markdown::updater::MarkdownTaskUpdater::update_task_status_char(&content, task_id, '/');
+        fs::write(&tasks_path, updated_content)?;
+
+        Ok(format!("🚀 Task {} marked as IN PROGRESS.", task_id))
+    }
+
     pub fn complete_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {
         let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
         let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
@@ -339,7 +360,7 @@ impl SpecManager {
 
         let content = fs::read_to_string(&tasks_path)?;
         let flat_tasks = crate::markdown::parser::TaskParser::parse_flat(&content);
-        
+
         let task = flat_tasks.iter().find(|t| t.id == task_id)
             .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
 
@@ -355,9 +376,14 @@ impl SpecManager {
         let updated_content = crate::markdown::updater::MarkdownTaskUpdater::update_task_status(&content, task_id, true);
         fs::write(&tasks_path, updated_content)?;
 
+        // Clear feedback marker if it exists
+        let feedback_marker = feature_path.join(".spec-last-feedback");
+        if feedback_marker.exists() {
+            fs::remove_file(feedback_marker)?;
+        }
+
         Ok(format!("✅ Task {} marked as completed!", task_id))
     }
-
     pub fn init(&self, base_dir: &Path, name: Option<String>, description: Option<String>, mode: Option<String>, loader: &OpenApiLoader) -> Result<String> {
         let feature_name = name.unwrap_or_else(|| {
             format!("feature-{}", chrono::Utc::now().timestamp())

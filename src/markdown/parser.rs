@@ -20,7 +20,7 @@ impl TaskParser {
 
     pub fn parse_flat(content: &str) -> Vec<Task> {
         let mut flat_tasks = Vec::new();
-        let re = Regex::new(r"^(\s*)-\s*\[([ xX])\]\s+(\d+(?:\.\d+)*)\.?\s*(.*)$").unwrap();
+        let re = Regex::new(r"^(\s*)-\s*\[([ xX/])\]\s+(\d+(?:\.\d+)*)\.?\s*(.*)$").unwrap();
 
         for (i, line) in content.lines().enumerate() {
             if let Some(caps) = re.captures(line) {
