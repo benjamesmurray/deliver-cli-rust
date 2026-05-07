@@ -21,14 +21,14 @@ async fn main() -> Result<()> {
     let base_dir = std::env::current_dir()?;
     
     // Path to OpenAPI spec - adjust as needed for distribution
-    let spec_env = std::env::var("SPEC_PATH").unwrap_or_else(|_| "legacy_deliver/api/spec-workflow.openapi.yaml".to_string());
-    let spec_path = Path::new(&spec_env);
-    let loader = match OpenApiLoader::load(spec_path) {
-        Ok(l) => l,
-        Err(e) => {
-            eprintln!("Warning: Failed to load OpenAPI spec from {}: {}. Falling back to empty configuration.", spec_env, e);
-            OpenApiLoader::empty()
-        }
+    let spec_env = std::env::var("SPEC_PATH").unwrap_or_default();
+    let loader = if !spec_env.is_empty() && Path::new(&spec_env).exists() {
+        OpenApiLoader::load(Path::new(&spec_env)).unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to load OpenAPI spec from {}: {}. Falling back to default configuration.", spec_env, e);
+            OpenApiLoader::load_default().expect("Failed to load embedded default config")
+        })
+    } else {
+        OpenApiLoader::load_default().expect("Failed to load embedded default config")
     };
     let manager = SpecManager;
 

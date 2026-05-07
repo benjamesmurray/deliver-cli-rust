@@ -73,6 +73,12 @@ impl OpenApiLoader {
         Ok(Self { spec })
     }
 
+    pub fn load_default() -> Result<Self> {
+        let content = include_str!("../assets/default-spec.yaml");
+        let spec: OpenApiSpec = serde_yaml::from_str(content)?;
+        Ok(Self { spec })
+    }
+
     pub fn empty() -> Self {
         Self {
             spec: OpenApiSpec::default(),

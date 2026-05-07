@@ -1,0 +1,220 @@
+openapi: 3.1.0
+info:
+  title: Spec Workflow API
+  version: 1.1.0
+  description: Intelligent Specification Workflow API
+
+servers:
+  - url: mcp://spec-workflow
+
+# All operation definitions
+paths:
+  /spec:
+    post:
+      operationId: executeWorkflow
+      summary: Execute workflow operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRequest"
+      responses:
+        "200":
+          description: Operation successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowResponse"
+
+# Data model definitions
+components:
+  schemas:
+    WorkflowRequest:
+      type: object
+      required: [action]
+      properties:
+        featureName:
+          type: string
+        action:
+          $ref: "#/components/schemas/Action"
+    
+    Action:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [sc_init, sc_plan, sc_approve, sc_status, sc_todo_start, sc_todo_complete]
+    
+    WorkflowResponse:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: object
+
+    # Common type definitions
+    Stage:
+      type: string
+      enum: [specification, tasks, completed]
+      description: Current stage
+
+# Global configuration
+x-global-config:
+  icons:
+    exists: "✅"
+    not_exists: "❌"
+    edited: "(edited)"
+    not_edited: "(pending edit)"
+    confirmed: "(confirmed)"
+  
+  status_text:
+    not_created: "Not created"
+    not_edited: "Waiting for edit"
+    has_format_issues: "Has format issues"
+    not_confirmed: "Pending confirmation"
+    completed: "Completed"
+  
+  stage_names:
+    specification: "Specification"
+    tasks: "Implementation Planning"
+    completed: "Completed"
+  
+  file_names:
+    specification: "Specification.md"
+    tasks: "Tasks.md"
+
+# Document templates
+x-document-templates:
+  specification:
+    title: "${featureName} - Specification"
+    sections:
+      - name: "Project Background"
+        content: "${introduction}"
+      - name: "Core Features & Scope"
+        placeholder: "## Core Features & Scope
+
+<template-specification>
+### In-Scope
+- [Feature 1]
+- [Feature 2]
+
+### Out-of-Scope
+- [Features to be explicitly ignored or mocked]
+</template-specification>"
+      - name: "Technical Constraints"
+        placeholder: "## Technical Constraints
+
+<template-specification>
+- **Language/Runtime**: [e.g., Node.js, Python]
+- **Data Storage**: [e.g., SQLite, Local JSON]
+- **Key Constraints**: [e.g., No external APIs, single-process, etc.]
+</template-specification>"
+      - name: "User Stories & Acceptance Criteria"
+        placeholder: "## User Stories
+
+<template-specification>
+- As a [user type], I want [feature], so that [benefit]
+  - [ ] Criterion 1
+  - [ ] Criterion 2
+</template-specification>"
+      - name: "Overview & Architecture"
+        placeholder: "## Overview & Architecture
+
+<template-specification>
+Provide a high-level overview of the architectural approach and data flow.
+</template-specification>"
+      - name: "Technical Stack"
+        placeholder: "## Technical Stack
+
+<template-specification>
+- **Backend**: [Frameworks, APIs]
+- **Frontend**: [UI Library, State Management]
+- **Utilities**: [Test runners, specialized libs]
+</template-specification>"
+      - name: "Components and Interfaces"
+        placeholder: "## Components and Interfaces
+
+<template-specification>
+Detail the main components and their functional responsibilities.
+</template-specification>"
+      - name: "Data Models"
+        placeholder: "## Data Models
+
+<template-specification>
+Define the core data structures and database schema.
+</template-specification>"
+  
+  tasks:
+    title: "${featureName} - Task List"
+    sections:
+      - name: "Implementation Tasks"
+        placeholder: "## Implementation Tasks
+
+<template-tasks>
+- [ ] 1. **Foundation & Setup**
+    - [ ] 1.1. Scaffolding, shared types, and project structure
+        - *Goal*: Establish the base environment and common definitions.
+        - *Files*: [List key files]
+        - *Requirements*: [Link to Req IDs]
+- [ ] 2. **Core Logic & Implementation**
+    - [ ] 2.1. Main business logic or backend services
+        - *Goal*: Implement the primary functional engine.
+- [ ] 3. **Integration & Connectivity**
+    - [ ] 3.1. API endpoints, data persistence, or external communication
+        - *Goal*: Enable data flow and persistence between components.
+- [ ] 4. **Interface & Interaction**
+    - [ ] 4.1. UI components, CLI handlers, or public interfaces
+        - *Goal*: Provide the primary interaction layer.
+- [ ] 5. **Verification & Quality**
+    - [ ] 5.1. Unit tests, integration tests, and performance validation
+        - *Goal*: Ensure correctness and reliability.
+</template-tasks>"
+      - name: "Task Dependencies"
+        placeholder: "## Task Dependencies
+
+<template-tasks>
+- Task [X] depends on completion of Task [Y]
+- Tasks [A] and [B] can be executed in parallel
+</template-tasks>"
+
+# Shared resource definitions
+x-shared-resources:
+  specification-guide:
+    uri: specification-guide
+    title: Specification Writing Guide
+    mimeType: text/markdown
+    text: |
+      # Specification Generation
+      
+      First, generate an initial set of requirements and technical design based on the feature idea. Iterate with the user to refine them until complete.
+      
+      **Constraints:**
+      - The model MUST edit the existing Specification.md file by removing the <template-specification> tags.
+      - The document MUST combine both product requirements (User Stories, Scope) and technical design (Architecture, Data Models).
+      - Ensure all architectural decisions are documented before asking for approval.
+      - Stop and ask for explicit user approval before calling sc_plan.
+
+  tasks-guide:
+    uri: tasks-guide
+    title: Task List Writing Guide
+    mimeType: text/markdown
+    text: |
+      # Implementation Planning Generation
+      
+      After the user approves the Specification, create an actionable implementation plan.
+      
+      **Constraints:**
+      - The model MUST edit the existing Tasks.md file by removing the <template-tasks> tags.
+      - Format as a numbered checkbox list (e.g., - [ ] 1.1 Setup).
+      - Each task MUST specify target files and dependencies.
+      - Stop and ask for explicit user approval before starting work on the first task with sc_todo_start.
+
+# Task guidance template
+x-task-guidance-template:
+  separator: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  header: "📋 Next task to implement:"
+  instructions: {}
+  prompts: {}
+  completionMessages: {}
