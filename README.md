@@ -78,6 +78,35 @@ Add the server to your MCP client configuration (e.g., `claude_desktop_config.js
 }
 ```
 
+### Customizing Templates
+
+By default, `deliver-cli` comes with built-in templates for `Specification.md` and `Tasks.md`. However, you can completely override these templates and the workflow text by providing your own OpenAPI YAML configuration file.
+
+To use a custom configuration, set the `SPEC_PATH` environment variable before running the CLI or the MCP server:
+
+```bash
+export SPEC_PATH=/path/to/your/custom-workflow.yaml
+deliver-cli status
+```
+
+In your MCP client configuration, you can pass this as an environment variable:
+
+```json
+{
+  "mcpServers": {
+    "deliver": {
+      "command": "deliver-cli",
+      "args": ["mcp"],
+      "env": {
+        "SPEC_PATH": "/absolute/path/to/your/custom-workflow.yaml"
+      }
+    }
+  }
+}
+```
+
+Your custom YAML file must define the `x-document-templates` block (containing `specification` and `tasks` templates) to dictate how files are scaffolded. The CLI detects whether a document is still in draft form by looking for `<template-specification>` and `<template-tasks>` tags within those files.
+
 ## License
 
 MIT
