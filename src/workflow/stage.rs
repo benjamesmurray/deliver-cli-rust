@@ -4,8 +4,7 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Stage {
-    Requirements,
-    Design,
+    Specification,
     Tasks,
     Completed,
 }
@@ -13,8 +12,7 @@ pub enum Stage {
 impl fmt::Display for Stage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Stage::Requirements => "requirements",
-            Stage::Design => "design",
+            Stage::Specification => "specification",
             Stage::Tasks => "tasks",
             Stage::Completed => "completed",
         };

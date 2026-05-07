@@ -1,13 +1,21 @@
 # deliver-cli
 
-A streamlined Model Context Protocol (MCP) server and CLI tool for managing a specification-driven development workflow (Requirements -> Design -> Implementation) directly from your command line.
+A streamlined Model Context Protocol (MCP) server and CLI tool for managing a specification-driven development workflow (Specification -> Implementation Planning) directly from your command line.
+
+## Workflow
+
+The CLI enforces a clean, two-phase process designed to minimize context bloat and keep AI agents focused:
+
+1.  **Specification Phase**: Initialize the feature and draft a `Specification.md`. This combines high-level requirements and technical design into a single source of truth.
+2.  **Implementation Planning**: Once the specification is approved, the system scaffolds `Tasks.md` for granular tracking of the build.
 
 ## Features
 
-- **Workflow Orchestration:** Define and enforce structured development phases using Markdown.
-- **MCP Server:** Exposes tools for AI agents (like Claude or Cursor) to automatically scaffold, edit, and verify project specifications.
-- **Task Management:** Automatically tracks and updates task statuses (Pending `[ ]`, In Progress `[/]`, Completed `[x]`) within nested checklists.
-- **Approval Gates:** Ensures human review before advancing to the next implementation phase.
+- **2-Phase Orchestration**: Simplified "Specification -> Tasks" workflow to reduce agent overhead and prevent looping.
+- **MCP Server**: Exposes tools (`sc_init`, `sc_plan`, `sc_approve`, etc.) for AI agents to autonomously manage the project lifecycle.
+- **Task Management**: Automatically tracks and updates task statuses (Pending `[ ]`, In Progress `[/]`, Completed `[x]`) within nested checklists.
+- **Epoch Context**: Built-in short-term memory management for agents to track intentions, hypotheses, and open questions.
+- **Approval Gates**: Requires explicit human approval via `sc_approve` before moving from Specification to Implementation.
 
 ## Installation
 
@@ -18,16 +26,25 @@ cargo install deliver-cli
 ## Usage
 
 ```bash
-# Initialize a new feature
+# 1. Initialize a new feature (Creates Specification.md)
 deliver-cli init --name feature-name
 
-# Check project status
+# 2. Check project status and next steps
 deliver-cli status
 
-# Start a task
+# 3. Draft/Edit the Specification.md
+# (Remove all <template-specification> tags to mark as ready)
+
+# 4. Approve the specification
+deliver-cli approve
+
+# 5. Scaffold implementation tasks (Creates Tasks.md)
+deliver-cli plan
+
+# 6. Start work on a specific task
 deliver-cli todo start --id 1.1
 
-# Complete a task
+# 7. Complete a task
 deliver-cli todo complete --id 1.1
 ```
 

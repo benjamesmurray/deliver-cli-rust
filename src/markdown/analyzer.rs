@@ -11,8 +11,7 @@ impl MarkdownAnalyzer {
 
         match fs::read_to_string(path) {
             Ok(content) => {
-                !content.contains("<template-requirements>") &&
-                !content.contains("<template-design>") &&
+                !content.contains("<template-specification>") &&
                 !content.contains("<template-tasks>")
             }
             Err(_) => false,

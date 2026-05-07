@@ -2,14 +2,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use regex::Regex;
-use crate::workflow::stage::{Stage, Status, StatusType};
 use crate::markdown::analyzer::MarkdownAnalyzer;
 use crate::io::openapi_loader::OpenApiLoader;
 use anyhow::{Result, anyhow};
 
 pub struct WorkflowState {
-    pub requirements: DocumentState,
-    pub design: DocumentState,
+    pub specification: DocumentState,
     pub tasks: DocumentState,
     pub feature_path: PathBuf,
 }
@@ -109,8 +107,7 @@ impl SpecManager {
         };
 
         WorkflowState {
-            requirements: get_doc_state("requirements"),
-            design: get_doc_state("design"),
+            specification: get_doc_state("specification"),
             tasks: get_doc_state("tasks"),
             feature_path: feature_path.to_path_buf(),
         }
@@ -154,8 +151,8 @@ impl SpecManager {
             }
         }
 
-        let mut next_steps = String::new();
-        let mut phase = "specify";
+        let next_steps: String;
+        let phase: &str;
         let mut status = "drafting";
         let mut blockers = Vec::new();
 
@@ -163,33 +160,16 @@ impl SpecManager {
             phase = "completed";
             status = "archived";
             next_steps = "Feature workflow complete.".to_string();
-        } else if !state.requirements.exists {
-            phase = "requirements";
-            next_steps = "use mcpx with server=\"spec\" and tool=\"sc_init\" to initialize requirements.".to_string();
-        } else if !state.requirements.edited {
-            phase = "requirements";
+        } else if !state.specification.exists {
+            phase = "specification";
+            next_steps = "use mcpx with server=\"spec\" and tool=\"sc_init\" to initialize specification.".to_string();
+        } else if !state.specification.edited {
+            phase = "specification";
             status = "drafting";
             blockers.push("template_tags_present");
-            next_steps = "Write requirements.md and use mcpx with server=\"spec\" and tool=\"sc_plan\" to advance.".to_string();
-        } else if !state.requirements.approved {
-            phase = "requirements";
-            status = "reviewing";
-            if mode == "one-shot" {
-                next_steps = "Resolve ambiguities then use mcpx with server=\"spec\" and tool=\"sc_plan\".".to_string();
-            } else {
-                next_steps = "Review and use mcpx with server=\"spec\" and tool=\"sc_approve\".".to_string();
-            }
-        } else if !state.design.exists {
-            phase = "requirements";
-            status = "approved";
-            next_steps = "use mcpx with server=\"spec\" and tool=\"sc_plan\" to scaffold design.".to_string();
-        } else if !state.design.edited {
-            phase = "design";
-            status = "drafting";
-            blockers.push("template_tags_present");
-            next_steps = "Write design.md and use mcpx with server=\"spec\" and tool=\"sc_plan\" to advance.".to_string();
-        } else if !state.design.approved {
-            phase = "design";
+            next_steps = "Write specification.md and use mcpx with server=\"spec\" and tool=\"sc_plan\" to advance.".to_string();
+        } else if !state.specification.approved {
+            phase = "specification";
             status = "reviewing";
             if mode == "one-shot" {
                 next_steps = "Resolve ambiguities then use mcpx with server=\"spec\" and tool=\"sc_plan\".".to_string();
@@ -197,7 +177,7 @@ impl SpecManager {
                 next_steps = "Review and use mcpx with server=\"spec\" and tool=\"sc_approve\".".to_string();
             }
         } else if !state.tasks.exists {
-            phase = "design";
+            phase = "specification";
             status = "approved";
             next_steps = "use mcpx with server=\"spec\" and tool=\"sc_plan\" to scaffold tasks.".to_string();
         } else if !state.tasks.edited {
@@ -266,10 +246,8 @@ impl SpecManager {
         let state = Self::get_workflow_state(&feature_path, loader);
         
         let mut phase = String::new();
-        if state.requirements.exists && state.requirements.edited && !state.requirements.approved {
-            phase = "requirements".to_string();
-        } else if state.design.exists && state.design.edited && !state.design.approved {
-            phase = "design".to_string();
+        if state.specification.exists && state.specification.edited && !state.specification.approved {
+            phase = "specification".to_string();
         } else if state.tasks.exists && state.tasks.edited && !state.tasks.approved {
             phase = "tasks".to_string();
         }
@@ -398,22 +376,22 @@ impl SpecManager {
             Self::set_mode(&feature_path, &m)?;
         }
 
-        let req_file = loader.get_file_name("requirements").cloned().unwrap_or("requirements.md".to_string());
-        let req_path = feature_path.join(req_file);
+        let spec_file = loader.get_file_name("specification").cloned().unwrap_or("specification.md".to_string());
+        let spec_path = feature_path.join(spec_file);
         
-        let mut msg = String::new();
-        if !req_path.exists() {
-            let template = loader.get_template("requirements").ok_or_else(|| anyhow!("Requirements template not found"))?;
+        let msg: String;
+        if !spec_path.exists() {
+            let template = loader.get_template("specification").ok_or_else(|| anyhow!("Specification template not found"))?;
             let mut vars = HashMap::new();
             vars.insert("featureName".to_string(), feature_name.clone());
-            vars.insert("introduction".to_string(), description.unwrap_or_else(|| "Initial requirements".to_string()));
+            vars.insert("introduction".to_string(), description.unwrap_or_else(|| "Initial specification".to_string()));
             
             let content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars);
-            fs::write(&req_path, content)?;
-            fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Requirements\n\n")?;
-            msg = format!("✅ Created new requirements template at: {:?}", req_path);
+            fs::write(&spec_path, content)?;
+            fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Specification\n\n")?;
+            msg = format!("✅ Created new specification template at: {:?}", spec_path);
         } else {
-            msg = format!("ℹ️ Requirements already exist at: {:?}", req_path);
+            msg = format!("ℹ️ Specification already exists at: {:?}", spec_path);
         }
 
         Ok(format!("{}\n\n{}", msg, self.get_status_summary(base_dir, Some(&feature_name), loader)))
@@ -424,33 +402,14 @@ impl SpecManager {
         let state = Self::get_workflow_state(&feature_path, loader);
         let mode = Self::get_mode(&feature_path);
 
-        let mut message = String::new();
+        let message: String;
 
-        if !state.requirements.exists {
+        if !state.specification.exists {
              return self.init(base_dir, feature.map(|s| s.to_string()), None, None, loader);
-        } else if !state.requirements.edited {
-            message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("requirements").unwrap());
-        } else if !state.requirements.approved && mode != "one-shot" {
-            message = "Requirements drafted but not yet approved. Please review and run `use mcpx with server=\"spec\" and tool=\"sc_approve\"` before advancing.".to_string();
-        } else if !state.design.exists {
-            if mode == "one-shot" {
-                Self::validate_transition(&feature_path)?;
-            }
-            let template = loader.get_template("design").ok_or_else(|| anyhow!("Design template not found"))?;
-            let mut vars = HashMap::new();
-            vars.insert("featureName".to_string(), feature_path.file_name().unwrap().to_string_lossy().to_string());
-            let mut content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars);
-            if let Some(ins) = instruction {
-                content.push_str(&format!("\n\n> **Guidance:** {}", ins));
-            }
-            let design_file = loader.get_file_name("design").unwrap();
-            fs::write(feature_path.join(design_file), content)?;
-            fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Design\n\n")?;
-            message = format!("Requirements complete. Scaffolding {}. Epoch context reset.", design_file);
-        } else if !state.design.edited {
-            message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("design").unwrap());
-        } else if !state.design.approved && mode != "one-shot" {
-            message = "Design drafted but not yet approved. Please review and run `use mcpx with server=\"spec\" and tool=\"sc_approve\"` before advancing.".to_string();
+        } else if !state.specification.edited {
+            message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("specification").unwrap());
+        } else if !state.specification.approved && mode != "one-shot" {
+            message = "Specification drafted but not yet approved. Please review and run `use mcpx with server=\"spec\" and tool=\"sc_approve\"` before advancing.".to_string();
         } else if !state.tasks.exists {
             if mode == "one-shot" {
                 Self::validate_transition(&feature_path)?;
@@ -465,7 +424,7 @@ impl SpecManager {
             let tasks_file = loader.get_file_name("tasks").unwrap();
             fs::write(feature_path.join(tasks_file), content)?;
             fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Implementation Planning\n\n")?;
-            message = format!("Design complete. Scaffolding {}. Epoch context reset.", tasks_file);
+            message = format!("Specification complete. Scaffolding {}. Epoch context reset.", tasks_file);
         } else if !state.tasks.edited {
             message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("tasks").unwrap());
         } else if !state.tasks.approved && mode != "one-shot" {
@@ -483,14 +442,15 @@ impl SpecManager {
             }
 
             if !all_tasks_complete {
-                message = "Not all implementation tasks are complete. Proceed with `mcpx with server=\"spec\" and tool=\"sc_todo_start\"` or finish tasks manually.".to_string();
+                let mut msg = "Not all implementation tasks are complete. Proceed with `mcpx with server=\"spec\" and tool=\"sc_todo_start\"` or finish tasks manually.".to_string();
                 if let Some(ins) = instruction {
-                    message.push_str(&format!("\n> Received instruction: {}", ins));
+                    msg.push_str(&format!("\n> Received instruction: {}", ins));
                 }
+                message = msg;
             } else {
-                message = "Workflow is completely finished.".to_string();
+                let msg = "Workflow is completely finished.".to_string();
                 let archive_res = self.archive(base_dir, feature)?;
-                return Ok(format!("{}\n\n{}\n\n{}", message, archive_res, self.get_status_summary(base_dir, None, loader)));
+                return Ok(format!("{}\n\n{}\n\n{}", msg, archive_res, self.get_status_summary(base_dir, None, loader)));
             }
         }
 
