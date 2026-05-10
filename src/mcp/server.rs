@@ -23,6 +23,8 @@ pub struct ScInit {
     pub name: Option<String>,
     pub description: Option<String>,
     pub mode: Option<String>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[macros::mcp_tool(name = "sc_plan", description = "Advance workflow phase")]
@@ -135,6 +137,13 @@ impl ServerHandler for DeliverServerHandler {
             "sc_init" => {
                 let args: ScInit = serde_json::from_value(serde_json::Value::Object(params.arguments.unwrap_or_default()))
                     .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
+
+                if args.name.is_none() && !args.extra.is_empty() {
+                    return Err(CallToolError::from_message(
+                        "Error: No project name detected. It looks like you provided unsupported arguments. The 'sc_init' tool requires the 'name' parameter.\n\nCorrect Syntax: use mcpx with server=\"spec\" tool=\"sc_init\" and name=\"<project-name>\"".to_string()
+                    ));
+                }
+
                 self.manager.init(&self.base_dir, args.name, args.description, args.mode, &self.loader)
                     .map_err(|e| CallToolError::from_message(e.to_string()))?
             }

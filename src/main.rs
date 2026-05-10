@@ -49,7 +49,13 @@ async fn main() -> Result<()> {
             let status = manager.get_status_summary(&base_dir, feature.as_deref(), &loader);
             println!("Project state verified.\n\n{}", status);
         }
-        Commands::Init { name, description, mode } => {
+        Commands::Init { name, description, mode, extraneous_args } => {
+            if name.is_none() && !extraneous_args.is_empty() {
+                return Err(anyhow!(
+                    "No project name detected. It looks like you tried to name the project using a positional argument, but 'init' requires the '--name' flag.\n\nCorrect Syntax: deliver-cli init --name \"{}\"",
+                    extraneous_args[0]
+                ));
+            }
             let output = manager.init(&base_dir, name, description, mode, &loader)?;
             println!("{}", output);
         }

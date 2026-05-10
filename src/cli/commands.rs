@@ -30,6 +30,8 @@ pub enum Commands {
         description: Option<String>,
         #[arg(short, long)]
         mode: Option<String>,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        extraneous_args: Vec<String>,
     },
     /// Progress the workflow state
     Plan {
