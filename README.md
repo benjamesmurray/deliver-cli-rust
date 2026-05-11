@@ -17,8 +17,8 @@ There are two ways to interact with `deliver-cli`: via the **CLI** (for humans) 
 | :--- | :--- | :--- |
 | `deliver-cli init` | `sc_init` | Initialize a new feature and scaffold `Specification.md` |
 | `deliver-cli status` | `sc_status` | Check the current phase, status, and next steps |
-| `deliver-cli approve` | `sc_approve` | Approve the current drafted phase (e.g., Specification) |
-| `deliver-cli plan` | `sc_plan` | Scaffold the next phase (e.g., `Tasks.md` after Specification) |
+| `deliver-cli approve` | `sc_approve` | Approve current phase and **auto-scaffold next phase** |
+| `deliver-cli plan` | `sc_plan` | Advance workflow or provide implementation instructions |
 | `deliver-cli todo start --id <id>` | `sc_todo_start` | Mark a specific task as "In Progress" `[/]` |
 | `deliver-cli todo complete --id <id>` | `sc_todo_complete` | Mark a specific task as "Completed" `[x]` |
 
@@ -34,13 +34,12 @@ Here is the exact sequence an AI agent or human would follow to complete a proje
     *   Shows `phase: specification`, `status: drafting`.
     *   *Agent must remove all `<template-specification>` tags from the file to proceed.*
 4.  **Review**: Once tags are removed, `sc_status()` shows `status: reviewing`.
-5.  **Approve**: The human reviews the doc and runs `deliver-cli approve` (or the agent calls `sc_approve()`).
+5.  **Approve & Scaffold**: The human reviews the doc and runs `deliver-cli approve` (or the agent calls `sc_approve()`).
+    *   **New**: This automatically scaffolds `projects/active/user-auth/Tasks.md`.
 
 ### Phase 2: Implementation Planning
-6.  **Scaffold Tasks**: `sc_plan()`
-    *   Detects approved specification and creates `projects/active/user-auth/Tasks.md`.
-7.  **Define Tasks**: The agent populates `Tasks.md` with a checklist (e.g., `- [ ] 1.1 Setup DB`).
-8.  **Final Approval**: Once tasks are edited and template tags removed, run `sc_approve()` again to transition to the implementation phase.
+6.  **Define Tasks**: The agent populates `Tasks.md` with a checklist (e.g., `- [ ] 1.1 Setup DB`).
+7.  **Final Approval**: Once tasks are edited and template tags removed, run `sc_approve()` again to transition to the implementation phase.
 
 ### Phase 3: Build
 9.  **Start Task**: `sc_todo_start(id="1.1")`

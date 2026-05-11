@@ -15,7 +15,7 @@ fn test_workflow_lifecycle() {
     fs::create_dir(&feature_dir).unwrap();
     println!("Feature dir in test: {:?}", feature_dir);
     
-    let spec_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("legacy_deliver/api/spec-workflow.openapi.yaml").canonicalize().unwrap();
+    let spec_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/assets/default-spec.yaml").canonicalize().unwrap();
     let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
     
     // 1. Init
@@ -57,7 +57,7 @@ fn test_workflow_lifecycle() {
         .expect("Failed to run status");
     assert!(String::from_utf8_lossy(&output.stdout).contains("status: reviewing"));
 
-    // 5. Approve
+    // 5. Approve (Should auto-scaffold tasks)
     let output = Command::new(bin_path)
         .args(&["approve", "--feature", "test-feature"])
         .env("SPEC_PATH", &spec_path)
@@ -65,14 +65,29 @@ fn test_workflow_lifecycle() {
         .output()
         .expect("Failed to run approve");
     assert!(output.status.success(), "Approve failed: {}", String::from_utf8_lossy(&output.stderr));
+    let tasks_file_path = feature_path.join("Tasks.md");
+    assert!(tasks_file_path.exists(), "Tasks.md should be auto-scaffolded after approve");
 
-    // 6. Plan (Scaffold tasks)
+    // 6. Edit tasks (remove template tags)
+    fs::write(&tasks_file_path, "# Tasks\n\n- [ ] **TSK-001**: Task 1").unwrap();
+
+    // 7. Approve Tasks
     let output = Command::new(bin_path)
-        .args(&["plan", "--feature", "test-feature"])
+        .args(&["approve", "--feature", "test-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run approve tasks");
+    assert!(output.status.success(), "Approve tasks failed: {}", String::from_utf8_lossy(&output.stderr));
+
+    // 8. Plan (Now that tasks are approved, it should show instructions)
+    let output = Command::new(bin_path)
+        .args(&["plan", "--feature", "test-feature", "--instruction", "Test instruction"])
         .env("SPEC_PATH", &spec_path)
         .current_dir(&root)
         .output()
         .expect("Failed to run plan");
+    let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(output.status.success(), "Plan failed: {}", String::from_utf8_lossy(&output.stderr));
-    assert!(feature_path.join("Tasks.md").exists());
+    assert!(stdout.contains("Test instruction"));
 }

@@ -179,7 +179,7 @@ impl SpecManager {
         } else if !state.tasks.exists {
             phase = "specification";
             status = "approved";
-            next_steps = "use mcpx with server=\"spec\" and tool=\"sc_plan\" to scaffold tasks.".to_string();
+            next_steps = "Specification approved. Proceeding to implementation planning.".to_string();
         } else if !state.tasks.edited {
             phase = "tasks";
             status = "drafting";
@@ -274,7 +274,13 @@ impl SpecManager {
         fs::write(approved_path, chrono::Utc::now().to_rfc3339())?;
         
         let display_name = loader.spec.global_config.stage_names.get(&phase).cloned().unwrap_or(phase);
-        Ok(format!("✅ Phase \"{}\" approved. use mcpx with server=\"spec\" and tool=\"sc_plan\" to scaffold next phase.", display_name))
+        let approve_msg = format!("✅ Phase \"{}\" approved.", display_name);
+
+        // Auto-advance to next phase
+        match self.plan(base_dir, feature_name, None, loader) {
+            Ok(plan_msg) => Ok(format!("{}\n\n{}", approve_msg, plan_msg)),
+            Err(e) => Ok(format!("{}\n\n⚠️ Auto-advance failed: {}", approve_msg, e)),
+        }
     }
 
     pub fn archive(&self, base_dir: &Path, feature_name: Option<&str>) -> Result<String> {
