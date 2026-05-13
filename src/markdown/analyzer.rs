@@ -17,7 +17,7 @@ impl MarkdownAnalyzer {
 
         if path.extension().map_or(false, |ext| ext == "json") {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
-                return v["template_tags_present"] == false;
+                return v["template_tags_present"] != true;
             }
             return false;
         }

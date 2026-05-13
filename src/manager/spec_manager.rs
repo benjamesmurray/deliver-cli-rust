@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TasksJson {
+    #[serde(default)]
     pub template_tags_present: bool,
     pub tasks: Vec<TaskDef>,
 }

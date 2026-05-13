@@ -192,7 +192,7 @@ x-shared-resources:
       
       **Constraints:**
       - The model MUST edit the existing Tasks.json file.
-      - Set "template_tags_present" to false.
+      - The model MUST NOT show "template_tags_present": true in the final document (set to false or remove it).
       - Each task MUST specify title, description, and dependencies.
       - Use "id" (e.g., "1.1") to define task hierarchy.
       - Stop and ask for explicit user approval before starting work on the first task with sc_todo_start.

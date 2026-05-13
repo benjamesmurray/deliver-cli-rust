@@ -39,7 +39,7 @@ Here is the exact sequence an AI agent or human would follow to complete a proje
 
 ### Phase 2: Implementation Planning
 6.  **Define Tasks**: The agent populates `Tasks.json` with a structured list of tasks.
-7.  **Final Approval**: Once tasks are edited and `"template_tags_present": false` is set in the JSON, run `sc_approve()` again to transition to the implementation phase.
+7.  **Final Approval**: Once tasks are edited and `"template_tags_present": true` is removed from the JSON, run `sc_approve()` again to transition to the implementation phase.
 
 ### Phase 3: Build
 9.  **Start Task**: `sc_todo_start(id="1.1")`

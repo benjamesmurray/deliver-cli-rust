@@ -30,10 +30,10 @@ Every `Tasks.json` file follows this strict structure:
 
 ## Field Definitions
 
-### `template_tags_present` (boolean)
+### `template_tags_present` (boolean, optional)
 *   **Purpose**: Acts as a safety gate for the drafting phase.
 *   **Behavior**: When a project is first scaffolded, this is set to `true`. The `sc_approve` command will fail as long as this is `true`.
-*   **Requirement**: You must set this to `false` once you have finished defining your task list.
+*   **Requirement**: You must set this to `false` OR remove the field entirely once you have finished defining your task list.
 
 ### `tasks` (array)
 A list of task objects that define the implementation plan.
@@ -60,6 +60,6 @@ A list of task objects that define the implementation plan.
 
 1.  **Scaffold**: When the user approves the Specification, the system creates `Tasks.json` with a single example task and `template_tags_present: true`.
 2.  **Populate**: The agent should rewrite the `tasks` array with the full implementation plan.
-3.  **Finalize**: The agent MUST set `"template_tags_present": false`.
+3.  **Finalize**: The agent MUST NOT show `"template_tags_present": true` in the final document (either set it to `false` or remove the field).
 4.  **Approve**: The human runs `deliver-cli approve` to lock in the plan.
 5.  **Execute**: The agent uses `sc_todo_start(id="1.1")` to begin work, which automatically updates the JSON status.

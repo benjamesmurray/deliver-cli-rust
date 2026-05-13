@@ -83,6 +83,37 @@ fn test_workflow_lifecycle() {
     }"#;
     fs::write(&tasks_file_path, tasks_json).unwrap();
 
+    // Verify status is reviewing
+    let output = Command::new(bin_path)
+        .args(&["status", "--feature", "test-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run status");
+    assert!(String::from_utf8_lossy(&output.stdout).contains("status: reviewing"), "Should be reviewing with false flag");
+
+    // 6b. Test with flag REMOVED
+    let tasks_json_no_flag = r#"{
+        "tasks": [
+            {
+                "id": "1.1",
+                "title": "Foundation & Setup",
+                "description": "Establish the base environment and common definitions.",
+                "status": "pending",
+                "dependencies": []
+            }
+        ]
+    }"#;
+    fs::write(&tasks_file_path, tasks_json_no_flag).unwrap();
+
+    let output = Command::new(bin_path)
+        .args(&["status", "--feature", "test-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run status");
+    assert!(String::from_utf8_lossy(&output.stdout).contains("status: reviewing"), "Should be reviewing with flag REMOVED");
+
     // 7. Approve Tasks
     let output = Command::new(bin_path)
         .args(&["approve", "--feature", "test-feature"])
