@@ -5,16 +5,24 @@ pub struct MarkdownAnalyzer;
 
 impl MarkdownAnalyzer {
     pub fn is_edited(path: impl AsRef<Path>) -> bool {
-        if !path.as_ref().exists() {
+        let path = path.as_ref();
+        if !path.exists() {
             return false;
         }
 
-        match fs::read_to_string(path) {
-            Ok(content) => {
-                !content.contains("<template-specification>") &&
-                !content.contains("<template-tasks>")
+        let content = match fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+
+        if path.extension().map_or(false, |ext| ext == "json") {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                return v["template_tags_present"] == false;
             }
-            Err(_) => false,
+            return false;
         }
+
+        !content.contains("<template-specification>") &&
+        !content.contains("<template-tasks>")
     }
 }

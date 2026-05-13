@@ -5,6 +5,22 @@ use regex::Regex;
 use crate::markdown::analyzer::MarkdownAnalyzer;
 use crate::io::openapi_loader::OpenApiLoader;
 use anyhow::{Result, anyhow};
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TasksJson {
+    pub template_tags_present: bool,
+    pub tasks: Vec<TaskDef>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TaskDef {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub status: String, // "pending", "in_progress", "completed"
+    pub dependencies: Vec<String>,
+}
 
 pub struct WorkflowState {
     pub specification: DocumentState,
@@ -143,10 +159,17 @@ impl SpecManager {
         let mut all_tasks_complete = false;
         if state.tasks.exists && state.tasks.edited {
             let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
-            if let Ok(content) = fs::read_to_string(feature_path.join(tasks_file)) {
-                let tasks = crate::markdown::parser::TaskParser::parse(&content);
-                if !tasks.is_empty() {
-                    all_tasks_complete = Self::are_all_tasks_done(&tasks);
+            let tasks_path = feature_path.join(&tasks_file);
+            if let Ok(content) = fs::read_to_string(&tasks_path) {
+                if tasks_file.ends_with(".json") {
+                    if let Ok(tasks_json) = serde_json::from_str::<TasksJson>(&content) {
+                        all_tasks_complete = !tasks_json.tasks.is_empty() && tasks_json.tasks.iter().all(|t| t.status == "completed");
+                    }
+                } else {
+                    let tasks = crate::markdown::parser::TaskParser::parse(&content);
+                    if !tasks.is_empty() {
+                        all_tasks_complete = Self::are_all_tasks_done(&tasks);
+                    }
                 }
             }
         }
@@ -315,20 +338,29 @@ impl SpecManager {
     pub fn start_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {
         let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
         let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
-        let tasks_path = feature_path.join(tasks_file);
+        let tasks_path = feature_path.join(&tasks_file);
 
         if !tasks_path.exists() {
-            return Err(anyhow!("tasks.md file does not exist. Please complete writing the tasks document first."));
+            return Err(anyhow!("{} file does not exist. Please complete writing the tasks document first.", tasks_file));
         }
 
         let content = fs::read_to_string(&tasks_path)?;
-        let flat_tasks = crate::markdown::parser::TaskParser::parse_flat(&content);
 
-        let _task = flat_tasks.iter().find(|t| t.id == task_id)
-            .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
+        if tasks_file.ends_with(".json") {
+            let mut tasks_json: TasksJson = serde_json::from_str(&content)?;
+            let task = tasks_json.tasks.iter_mut().find(|t| t.id == task_id)
+                .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
+            task.status = "in_progress".to_string();
+            let updated_content = serde_json::to_string_pretty(&tasks_json)?;
+            fs::write(&tasks_path, updated_content)?;
+        } else {
+            let flat_tasks = crate::markdown::parser::TaskParser::parse_flat(&content);
+            let _task = flat_tasks.iter().find(|t| t.id == task_id)
+                .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
 
-        let updated_content = crate::markdown::updater::MarkdownTaskUpdater::update_task_status_char(&content, task_id, '/');
-        fs::write(&tasks_path, updated_content)?;
+            let updated_content = crate::markdown::updater::MarkdownTaskUpdater::update_task_status_char(&content, task_id, '/');
+            fs::write(&tasks_path, updated_content)?;
+        }
 
         Ok(format!("🚀 Task {} marked as IN PROGRESS.", task_id))
     }
@@ -336,29 +368,51 @@ impl SpecManager {
     pub fn complete_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {
         let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
         let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
-        let tasks_path = feature_path.join(tasks_file);
+        let tasks_path = feature_path.join(&tasks_file);
 
         if !tasks_path.exists() {
-            return Err(anyhow!("tasks.md file does not exist. Please complete writing the tasks document first."));
+            return Err(anyhow!("{} file does not exist. Please complete writing the tasks document first.", tasks_file));
         }
 
         let content = fs::read_to_string(&tasks_path)?;
-        let flat_tasks = crate::markdown::parser::TaskParser::parse_flat(&content);
 
-        let task = flat_tasks.iter().find(|t| t.id == task_id)
-            .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
+        if tasks_file.ends_with(".json") {
+            let mut tasks_json: TasksJson = serde_json::from_str(&content)?;
+            
+            // Subtask check
+            let prefix = format!("{}.", task_id);
+            if tasks_json.tasks.iter().any(|t| t.id.starts_with(&prefix) && t.status != "completed") {
+                return Err(anyhow!("Task {} has uncompleted subtasks", task_id));
+            }
 
-        if task.completed {
-            return Ok(format!("ℹ️ Task {} is already completed.", task_id));
+            let task = tasks_json.tasks.iter_mut().find(|t| t.id == task_id)
+                .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
+            
+            if task.status == "completed" {
+                return Ok(format!("ℹ️ Task {} is already completed.", task_id));
+            }
+
+            task.status = "completed".to_string();
+            let updated_content = serde_json::to_string_pretty(&tasks_json)?;
+            fs::write(&tasks_path, updated_content)?;
+        } else {
+            let flat_tasks = crate::markdown::parser::TaskParser::parse_flat(&content);
+
+            let task = flat_tasks.iter().find(|t| t.id == task_id)
+                .ok_or_else(|| anyhow!("Task {} not found", task_id))?;
+
+            if task.completed {
+                return Ok(format!("ℹ️ Task {} is already completed.", task_id));
+            }
+
+            let subtasks: Vec<_> = flat_tasks.iter().filter(|t| t.id.starts_with(&format!("{}.", task_id))).collect();
+            if subtasks.iter().any(|t| !t.completed) {
+                return Err(anyhow!("Task {} has uncompleted subtasks", task_id));
+            }
+
+            let updated_content = crate::markdown::updater::MarkdownTaskUpdater::update_task_status(&content, task_id, true);
+            fs::write(&tasks_path, updated_content)?;
         }
-
-        let subtasks: Vec<_> = flat_tasks.iter().filter(|t| t.id.starts_with(&format!("{}.", task_id))).collect();
-        if subtasks.iter().any(|t| !t.completed) {
-            return Err(anyhow!("Task {} has uncompleted subtasks", task_id));
-        }
-
-        let updated_content = crate::markdown::updater::MarkdownTaskUpdater::update_task_status(&content, task_id, true);
-        fs::write(&tasks_path, updated_content)?;
 
         // Clear feedback marker if it exists
         let feedback_marker = feature_path.join(".spec-last-feedback");
@@ -383,7 +437,7 @@ impl SpecManager {
         }
 
         let spec_file = loader.get_file_name("specification").cloned().unwrap_or("specification.md".to_string());
-        let spec_path = feature_path.join(spec_file);
+        let spec_path = feature_path.join(&spec_file);
         
         let msg: String;
         if !spec_path.exists() {
@@ -392,7 +446,8 @@ impl SpecManager {
             vars.insert("featureName".to_string(), feature_name.clone());
             vars.insert("introduction".to_string(), description.unwrap_or_else(|| "Initial specification".to_string()));
             
-            let content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars);
+            let is_json = spec_file.ends_with(".json");
+            let content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars, is_json);
             fs::write(&spec_path, content)?;
             fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Specification\n\n")?;
             msg = format!("✅ Created new specification template at: {:?}", spec_path);
@@ -423,11 +478,14 @@ impl SpecManager {
             let template = loader.get_template("tasks").ok_or_else(|| anyhow!("Tasks template not found"))?;
             let mut vars = HashMap::new();
             vars.insert("featureName".to_string(), feature_path.file_name().unwrap().to_string_lossy().to_string());
-            let mut content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars);
-            if let Some(ins) = instruction {
-                content.push_str(&format!("\n\n> **Guidance:** {}", ins));
-            }
             let tasks_file = loader.get_file_name("tasks").unwrap();
+            let is_json = tasks_file.ends_with(".json");
+            let mut content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars, is_json);
+            if !is_json {
+                if let Some(ins) = instruction {
+                    content.push_str(&format!("\n\n> **Guidance:** {}", ins));
+                }
+            }
             fs::write(feature_path.join(tasks_file), content)?;
             fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Implementation Planning\n\n")?;
             message = format!("Specification complete. Scaffolding {}. Epoch context reset.", tasks_file);
@@ -440,10 +498,16 @@ impl SpecManager {
             let tasks_file = loader.get_file_name("tasks").unwrap();
             let tasks_path = feature_path.join(tasks_file);
             if tasks_path.exists() {
-                let content = fs::read_to_string(tasks_path)?;
-                let tasks = crate::markdown::parser::TaskParser::parse(&content);
-                if !tasks.is_empty() {
-                    all_tasks_complete = Self::are_all_tasks_done(&tasks);
+                let content = fs::read_to_string(&tasks_path)?;
+                if tasks_file.ends_with(".json") {
+                    if let Ok(tasks_json) = serde_json::from_str::<TasksJson>(&content) {
+                        all_tasks_complete = !tasks_json.tasks.is_empty() && tasks_json.tasks.iter().all(|t| t.status == "completed");
+                    }
+                } else {
+                    let tasks = crate::markdown::parser::TaskParser::parse(&content);
+                    if !tasks.is_empty() {
+                        all_tasks_complete = Self::are_all_tasks_done(&tasks);
+                    }
                 }
             }
 

@@ -7,7 +7,7 @@ A streamlined Model Context Protocol (MCP) server and CLI tool for managing a sp
 The CLI enforces a clean, two-phase process designed to minimize context bloat and keep AI agents focused:
 
 1.  **Specification Phase**: Initialize the feature and draft a `Specification.md`. This combines high-level requirements and technical design into a single source of truth.
-2.  **Implementation Planning**: Once the specification is approved, the system scaffolds `Tasks.md` for granular tracking of the build.
+2.  **Implementation Planning**: Once the specification is approved, the system scaffolds `Tasks.json` for granular tracking of the build.
 
 ## Tools: CLI vs MCP
 
@@ -19,8 +19,8 @@ There are two ways to interact with `deliver-cli`: via the **CLI** (for humans) 
 | `deliver-cli status` | `sc_status` | Check the current phase, status, and next steps |
 | `deliver-cli approve` | `sc_approve` | Approve current phase and **auto-scaffold next phase** |
 | `deliver-cli plan` | `sc_plan` | Advance workflow or provide implementation instructions |
-| `deliver-cli todo start --id <id>` | `sc_todo_start` | Mark a specific task as "In Progress" `[/]` |
-| `deliver-cli todo complete --id <id>` | `sc_todo_complete` | Mark a specific task as "Completed" `[x]` |
+| `deliver-cli todo start --id <id>` | `sc_todo_start` | Mark a specific task as "In Progress" |
+| `deliver-cli todo complete --id <id>` | `sc_todo_complete` | Mark a specific task as "Completed" |
 
 ## Example End-to-End Workflow
 
@@ -35,24 +35,24 @@ Here is the exact sequence an AI agent or human would follow to complete a proje
     *   *Agent must remove all `<template-specification>` tags from the file to proceed.*
 4.  **Review**: Once tags are removed, `sc_status()` shows `status: reviewing`.
 5.  **Approve & Scaffold**: The human reviews the doc and runs `deliver-cli approve` (or the agent calls `sc_approve()`).
-    *   **New**: This automatically scaffolds `projects/active/user-auth/Tasks.md`.
+    *   **New**: This automatically scaffolds `projects/active/user-auth/Tasks.json`.
 
 ### Phase 2: Implementation Planning
-6.  **Define Tasks**: The agent populates `Tasks.md` with a checklist (e.g., `- [ ] 1.1 Setup DB`).
-7.  **Final Approval**: Once tasks are edited and template tags removed, run `sc_approve()` again to transition to the implementation phase.
+6.  **Define Tasks**: The agent populates `Tasks.json` with a structured list of tasks.
+7.  **Final Approval**: Once tasks are edited and `"template_tags_present": false` is set in the JSON, run `sc_approve()` again to transition to the implementation phase.
 
 ### Phase 3: Build
 9.  **Start Task**: `sc_todo_start(id="1.1")`
-    *   Updates task in `Tasks.md` to `[/]`.
+    *   Updates task status in `Tasks.json` to `"in_progress"`.
 10. **Build**: The agent performs the actual coding work.
 11. **Complete Task**: `sc_todo_complete(id="1.1")`
-    *   Updates task in `Tasks.md` to `[x]`.
-12. **Archive**: Once all tasks are `[x]`, `sc_plan()` will automatically move the project to `projects/completed/`.
+    *   Updates task status in `Tasks.json` to `"completed"`.
+12. **Archive**: Once all tasks are `"completed"`, `sc_plan()` will automatically move the project to `projects/completed/`.
 
 ## Features
 
 - **2-Phase Orchestration**: Simplified "Specification -> Tasks" workflow to reduce agent overhead.
-- **Task Management**: Automatically tracks and updates task statuses (Pending `[ ]`, In Progress `[/]`, Completed `[x]`).
+- **JSON Task Management**: Deterministic task tracking using `Tasks.json` to eliminate LLM parsing errors.
 - **Epoch Context**: Short-term memory management via `deliver-cli epoch` to track focus, intentions, and open questions.
 - **Approval Gates**: Requires explicit human approval before advancing from Specification to Implementation.
 

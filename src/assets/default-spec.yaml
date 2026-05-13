@@ -83,7 +83,7 @@ x-global-config:
   
   file_names:
     specification: "Specification.md"
-    tasks: "Tasks.md"
+    tasks: "Tasks.json"
 
 # Document templates
 x-document-templates:
@@ -150,34 +150,19 @@ Define the core data structures and database schema.
     title: "${featureName} - Task List"
     sections:
       - name: "Implementation Tasks"
-        placeholder: "## Implementation Tasks
-
-<template-tasks>
-- [ ] 1. **Foundation & Setup**
-    - [ ] 1.1. Scaffolding, shared types, and project structure
-        - *Goal*: Establish the base environment and common definitions.
-        - *Files*: [List key files]
-        - *Requirements*: [Link to Req IDs]
-- [ ] 2. **Core Logic & Implementation**
-    - [ ] 2.1. Main business logic or backend services
-        - *Goal*: Implement the primary functional engine.
-- [ ] 3. **Integration & Connectivity**
-    - [ ] 3.1. API endpoints, data persistence, or external communication
-        - *Goal*: Enable data flow and persistence between components.
-- [ ] 4. **Interface & Interaction**
-    - [ ] 4.1. UI components, CLI handlers, or public interfaces
-        - *Goal*: Provide the primary interaction layer.
-- [ ] 5. **Verification & Quality**
-    - [ ] 5.1. Unit tests, integration tests, and performance validation
-        - *Goal*: Ensure correctness and reliability.
-</template-tasks>"
-      - name: "Task Dependencies"
-        placeholder: "## Task Dependencies
-
-<template-tasks>
-- Task [X] depends on completion of Task [Y]
-- Tasks [A] and [B] can be executed in parallel
-</template-tasks>"
+        placeholder: |
+          {
+            "template_tags_present": true,
+            "tasks": [
+              {
+                "id": "1.1",
+                "title": "Foundation & Setup",
+                "description": "Establish the base environment and common definitions.",
+                "status": "pending",
+                "dependencies": []
+              }
+            ]
+          }
 
 # Shared resource definitions
 x-shared-resources:
@@ -203,12 +188,13 @@ x-shared-resources:
     text: |
       # Implementation Planning Generation
       
-      After the user approves the Specification, create an actionable implementation plan.
+      After the user approves the Specification, create an actionable implementation plan in Tasks.json.
       
       **Constraints:**
-      - The model MUST edit the existing Tasks.md file by removing the <template-tasks> tags.
-      - Format as a numbered checkbox list (e.g., - [ ] 1.1 Setup).
-      - Each task MUST specify target files and dependencies.
+      - The model MUST edit the existing Tasks.json file.
+      - Set "template_tags_present" to false.
+      - Each task MUST specify title, description, and dependencies.
+      - Use "id" (e.g., "1.1") to define task hierarchy.
       - Stop and ask for explicit user approval before starting work on the first task with sc_todo_start.
 
 # Task guidance template

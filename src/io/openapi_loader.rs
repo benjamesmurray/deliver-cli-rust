@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
+use std::path::Path;
+use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct OpenApiSpec {

@@ -4,12 +4,14 @@ use crate::io::openapi_loader::DocumentTemplate;
 pub struct TemplateEngine;
 
 impl TemplateEngine {
-    pub fn interpolate(template: &DocumentTemplate, variables: &HashMap<String, String>) -> String {
+    pub fn interpolate(template: &DocumentTemplate, variables: &HashMap<String, String>, is_json: bool) -> String {
         let mut output = String::new();
 
-        // Interpolate title
-        let title = Self::replace_vars(&template.title, variables);
-        output.push_str(&format!("# {}\n\n", title));
+        if !is_json {
+            // Interpolate title
+            let title = Self::replace_vars(&template.title, variables);
+            output.push_str(&format!("# {}\n\n", title));
+        }
 
         for section in &template.sections {
             if let Some(content) = &section.content {
@@ -17,7 +19,9 @@ impl TemplateEngine {
             } else if let Some(placeholder) = &section.placeholder {
                 output.push_str(&Self::replace_vars(placeholder, variables));
             }
-            output.push_str("\n\n");
+            if !is_json {
+                output.push_str("\n\n");
+            }
         }
 
         output.trim().to_string()

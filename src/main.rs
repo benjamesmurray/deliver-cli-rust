@@ -11,8 +11,6 @@ use anyhow::{Result, anyhow};
 use crate::cli::commands::{Cli, Commands, TodoAction};
 use crate::manager::spec_manager::SpecManager;
 use crate::io::openapi_loader::OpenApiLoader;
-use crate::io::template_engine::TemplateEngine;
-use std::collections::HashMap;
 use std::fs;
 
 #[tokio::main]

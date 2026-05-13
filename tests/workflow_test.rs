@@ -65,11 +65,23 @@ fn test_workflow_lifecycle() {
         .output()
         .expect("Failed to run approve");
     assert!(output.status.success(), "Approve failed: {}", String::from_utf8_lossy(&output.stderr));
-    let tasks_file_path = feature_path.join("Tasks.md");
-    assert!(tasks_file_path.exists(), "Tasks.md should be auto-scaffolded after approve");
+    let tasks_file_path = feature_path.join("Tasks.json");
+    assert!(tasks_file_path.exists(), "Tasks.json should be auto-scaffolded after approve");
 
-    // 6. Edit tasks (remove template tags)
-    fs::write(&tasks_file_path, "# Tasks\n\n- [ ] **TSK-001**: Task 1").unwrap();
+    // 6. Edit tasks (set template_tags_present to false)
+    let tasks_json = r#"{
+        "template_tags_present": false,
+        "tasks": [
+            {
+                "id": "1.1",
+                "title": "Foundation & Setup",
+                "description": "Establish the base environment and common definitions.",
+                "status": "pending",
+                "dependencies": []
+            }
+        ]
+    }"#;
+    fs::write(&tasks_file_path, tasks_json).unwrap();
 
     // 7. Approve Tasks
     let output = Command::new(bin_path)
@@ -90,4 +102,28 @@ fn test_workflow_lifecycle() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(output.status.success(), "Plan failed: {}", String::from_utf8_lossy(&output.stderr));
     assert!(stdout.contains("Test instruction"));
+
+    // 9. Start Task
+    let output = Command::new(bin_path)
+        .args(&["todo", "start", "--id", "1.1", "--feature", "test-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run todo start");
+    assert!(output.status.success(), "Todo start failed: {}", String::from_utf8_lossy(&output.stderr));
+    
+    let tasks_content = fs::read_to_string(&tasks_file_path).unwrap();
+    assert!(tasks_content.contains("\"status\": \"in_progress\""));
+
+    // 10. Complete Task
+    let output = Command::new(bin_path)
+        .args(&["todo", "complete", "--id", "1.1", "--feature", "test-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run todo complete");
+    assert!(output.status.success(), "Todo complete failed: {}", String::from_utf8_lossy(&output.stderr));
+    
+    let tasks_content = fs::read_to_string(&tasks_file_path).unwrap();
+    assert!(tasks_content.contains("\"status\": \"completed\""));
 }
