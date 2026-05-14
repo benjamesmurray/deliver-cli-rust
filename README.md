@@ -79,7 +79,7 @@ Add the server to your MCP client configuration (e.g., `claude_desktop_config.js
 
 ### Customizing Templates
 
-By default, `deliver-cli` comes with built-in templates for `Specification.md` and `Tasks.md`. However, you can completely override these templates and the workflow text by providing your own OpenAPI YAML configuration file.
+By default, `deliver-cli` comes with built-in templates for `Specification.md` and `Tasks.json`. However, you can completely override these templates and the workflow text by providing your own OpenAPI YAML configuration file.
 
 To use a custom configuration, set the `SPEC_PATH` environment variable before running the CLI or the MCP server:
 

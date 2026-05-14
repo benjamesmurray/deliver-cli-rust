@@ -153,13 +153,13 @@ impl SpecManager {
         let state = Self::get_workflow_state(&feature_path, loader);
         let mode = Self::get_mode(&feature_path);
         let root_dir = Self::find_project_root(base_dir);
+        let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("Tasks.json".to_string());
 
         let is_archived = feature_path.starts_with(root_dir.join("projects/completed")) || 
                          feature_path.starts_with(root_dir.join("completed"));
 
         let mut all_tasks_complete = false;
         if state.tasks.exists && state.tasks.edited {
-            let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
             let tasks_path = feature_path.join(&tasks_file);
             if let Ok(content) = fs::read_to_string(&tasks_path) {
                 if tasks_file.ends_with(".json") {
@@ -208,7 +208,7 @@ impl SpecManager {
             phase = "tasks";
             status = "drafting";
             blockers.push("template_tags_present");
-            next_steps = "Write tasks.md and use mcpx with server=\"spec\" and tool=\"sc_todo_start\" to begin.".to_string();
+            next_steps = format!("Write {} and use mcpx with server=\"spec\" and tool=\"sc_todo_start\" to begin.", tasks_file);
         } else if !state.tasks.approved {
             phase = "tasks";
             status = "reviewing";
@@ -338,7 +338,7 @@ impl SpecManager {
 
     pub fn start_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {
         let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
-        let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
+        let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("Tasks.json".to_string());
         let tasks_path = feature_path.join(&tasks_file);
 
         if !tasks_path.exists() {
@@ -368,7 +368,7 @@ impl SpecManager {
 
     pub fn complete_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {
         let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
-        let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("tasks.md".to_string());
+        let tasks_file = loader.get_file_name("tasks").cloned().unwrap_or("Tasks.json".to_string());
         let tasks_path = feature_path.join(&tasks_file);
 
         if !tasks_path.exists() {
