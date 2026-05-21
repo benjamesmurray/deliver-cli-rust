@@ -191,7 +191,8 @@ impl SpecManager {
             phase = "specification";
             status = "drafting";
             blockers.push("template_tags_present");
-            next_steps = "Write specification.md and use mcpx with server=\"spec\" and tool=\"sc_plan\" to advance.".to_string();
+            let spec_file = loader.get_file_name("specification").map(|s| s.as_str()).unwrap_or("specification.md");
+            next_steps = format!("Complete '{}' and run `sc_approve` to finalize.", spec_file);
         } else if !state.specification.approved {
             phase = "specification";
             status = "reviewing";
@@ -203,12 +204,12 @@ impl SpecManager {
         } else if !state.tasks.exists {
             phase = "specification";
             status = "approved";
-            next_steps = "Specification approved. Proceeding to implementation planning.".to_string();
+            next_steps = "Specification approved. Proceeding to implementation planning (TASKS phase).".to_string();
         } else if !state.tasks.edited {
             phase = "tasks";
             status = "drafting";
             blockers.push("template_tags_present");
-            next_steps = format!("Write {} and use mcpx with server=\"spec\" and tool=\"sc_todo_start\" to begin.", tasks_file);
+            next_steps = format!("Define tasks in '{}' and run `sc_approve` to finalize the plan.", tasks_file);
         } else if !state.tasks.approved {
             phase = "tasks";
             status = "reviewing";
@@ -448,7 +449,8 @@ impl SpecManager {
             let content = crate::io::template_engine::TemplateEngine::interpolate(template, &vars, is_json);
             fs::write(&spec_path, content)?;
             fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Specification\n\n")?;
-            msg = format!("✅ Created new specification template at: {:?}", spec_path);
+            msg = format!("✅ Feature initialized. You are in PLAN mode. NEXT STEPS:\n1. Use 'read' to examine the generated '{}' template.\n2. Complete '{}' by removing all <template> tags.\n3. Run 'sc_approve' to finalize the specification.\nCRITICAL: DO NOT draft '{}' yet. You must approve the specification first.", 
+                spec_file, spec_file, loader.get_file_name("tasks").map(|s| s.as_str()).unwrap_or("Tasks.json"));
         } else {
             msg = format!("ℹ️ Specification already exists at: {:?}", spec_path);
         }
@@ -488,7 +490,8 @@ impl SpecManager {
             }
             fs::write(feature_path.join(tasks_file), content)?;
             fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Implementation Planning\n\n")?;
-            message = format!("Specification complete. Scaffolding {}. Epoch context reset.", tasks_file);
+            message = format!("✅ Specification approved. You are now in the TASKS phase. NEXT STEPS:\n1. Use 'read' to examine the generated '{}' template.\n2. Define your atomic implementation tasks in '{}'.\n3. Run 'sc_approve' to finalize the plan and unlock Build Mode.", 
+                tasks_file, tasks_file);
         } else if !state.tasks.edited {
             message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("tasks").unwrap());
         } else if !state.tasks.approved && mode != "one-shot" {

@@ -40,7 +40,7 @@ fn test_init_flag_success() {
     
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Created new specification template"));
+    assert!(stdout.contains("Feature initialized"));
     
     assert!(root.join("projects/active/Correct-Name/Specification.md").exists());
 }

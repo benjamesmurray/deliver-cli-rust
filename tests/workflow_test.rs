@@ -28,7 +28,7 @@ fn test_workflow_lifecycle() {
     
     assert!(output.status.success(), "Init failed: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Created new specification template"));
+    assert!(stdout.contains("Feature initialized"));
     
     let feature_path = root.join("projects/active/test-feature");
     let spec_file_path = feature_path.join("Specification.md");
