@@ -423,13 +423,10 @@ impl SpecManager {
 
         Ok(format!("✅ Task {} marked as completed!", task_id))
     }
-    pub fn init(&self, base_dir: &Path, name: Option<String>, description: Option<String>, mode: Option<String>, loader: &OpenApiLoader) -> Result<String> {
-        let feature_name = name.unwrap_or_else(|| {
-            format!("feature-{}", chrono::Utc::now().timestamp())
-        });
-        
-        let feature_path = Self::resolve_feature_path(base_dir, Some(&feature_name))?;
-        if !feature_path.exists() {
+    pub fn init(&self, base_dir: &Path, name: String, description: Option<String>, mode: Option<String>, loader: &OpenApiLoader) -> Result<String> {
+        let feature_name = name;
+
+        let feature_path = Self::resolve_feature_path(base_dir, Some(&feature_name))?;        if !feature_path.exists() {
             fs::create_dir_all(&feature_path)?;
         }
         
@@ -467,7 +464,9 @@ impl SpecManager {
         let message: String;
 
         if !state.specification.exists {
-             return self.init(base_dir, feature.map(|s| s.to_string()), None, None, loader);
+             let name = feature.map(|s| s.to_string())
+                .unwrap_or_else(|| feature_path.file_name().unwrap().to_string_lossy().to_string());
+             return self.init(base_dir, name, None, None, loader);
         } else if !state.specification.edited {
             message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("specification").unwrap());
         } else if !state.specification.approved && mode != "one-shot" {

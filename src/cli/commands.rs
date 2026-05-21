@@ -25,7 +25,7 @@ pub enum Commands {
     /// Initialize a new feature specification
     Init {
         #[arg(short, long)]
-        name: Option<String>,
+        name: String,
         #[arg(short, long)]
         description: Option<String>,
         #[arg(short, long)]

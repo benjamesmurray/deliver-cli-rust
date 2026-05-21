@@ -3,7 +3,7 @@ use tempfile::tempdir;
 use std::fs;
 
 #[test]
-fn test_init_positional_failure() {
+fn test_init_missing_name_failure() {
     let dir = tempdir().unwrap();
     let root = dir.path().canonicalize().unwrap();
     
@@ -13,16 +13,15 @@ fn test_init_positional_failure() {
     let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
     
     let output = Command::new(bin_path)
-        .args(&["init", "Broken Name"])
+        .args(&["init"])
         .current_dir(&root)
         .output()
         .expect("Failed to run init");
     
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("No project name detected"));
-    assert!(stderr.contains("init' requires the '--name' flag"));
-    assert!(stderr.contains("--name \"Broken Name\""));
+    assert!(stderr.contains("the following required arguments were not provided"));
+    assert!(stderr.contains("--name <NAME>"));
 }
 
 #[test]
@@ -46,22 +45,4 @@ fn test_init_flag_success() {
     assert!(root.join("projects/active/Correct-Name/Specification.md").exists());
 }
 
-#[test]
-fn test_init_no_args_fallback() {
-    let dir = tempdir().unwrap();
-    let root = dir.path().canonicalize().unwrap();
-    fs::write(root.join(".spec_root"), "").unwrap();
-    
-    let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
-    
-    let output = Command::new(bin_path)
-        .args(&["init"])
-        .current_dir(&root)
-        .output()
-        .expect("Failed to run init");
-    
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Created new specification template"));
-    assert!(stdout.contains("feature-"));
-}
+

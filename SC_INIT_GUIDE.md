@@ -22,11 +22,9 @@ deliver-cli init --name "user-authentication" --description "Implement JWT-based
 
 ## Parameters
 
-### `name` (string, optional)
+### `name` (string, required)
 *   **Purpose**: Defines the folder name for the project.
-*   **Behavior**:
-    *   If provided, the project will be created at `projects/active/<name>/`.
-    *   If omitted, a default name like `feature-1715587200` (timestamp) will be generated.
+*   **Behavior**: The project will be created at `projects/active/<name>/`.
 *   **Recommendation**: Use lowercase with hyphens for consistency (e.g., `api-migration`).
 
 ### `description` (string, optional)
