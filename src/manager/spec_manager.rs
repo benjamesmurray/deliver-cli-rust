@@ -16,11 +16,48 @@ pub struct TasksJson {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskDef {
+    #[serde(deserialize_with = "deserialize_flexible_string")]
     pub id: String,
     pub title: String,
     pub description: String,
     pub status: String, // "pending", "in_progress", "completed"
+    #[serde(deserialize_with = "deserialize_flexible_string_vec")]
     pub dependencies: Vec<String>,
+}
+
+pub fn deserialize_flexible_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum FlexibleId {
+        Int(i64),
+        String(String),
+    }
+
+    Ok(match FlexibleId::deserialize(deserializer)? {
+        FlexibleId::Int(i) => i.to_string(),
+        FlexibleId::String(s) => s,
+    })
+}
+
+pub fn deserialize_flexible_string_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum FlexibleId {
+        Int(i64),
+        String(String),
+    }
+
+    let vec: Vec<FlexibleId> = Vec::deserialize(deserializer)?;
+    Ok(vec.into_iter().map(|id| match id {
+        FlexibleId::Int(i) => i.to_string(),
+        FlexibleId::String(s) => s,
+    }).collect())
 }
 
 pub struct WorkflowState {
@@ -535,5 +572,37 @@ impl SpecManager {
 
     pub fn are_all_tasks_done(tasks: &[crate::markdown::parser::Task]) -> bool {
         tasks.iter().all(|t| t.completed && (t.children.is_empty() || Self::are_all_tasks_done(&t.children)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_flexible_id_deserialization() {
+        let json = r#"{
+            "tasks": [
+                {
+                    "id": 1,
+                    "title": "Task 1",
+                    "description": "Integer ID",
+                    "status": "pending",
+                    "dependencies": [2]
+                },
+                {
+                    "id": "2",
+                    "title": "Task 2",
+                    "description": "String ID",
+                    "status": "pending",
+                    "dependencies": ["1"]
+                }
+            ]
+        }"#;
+        let tasks: TasksJson = serde_json::from_str(json).unwrap();
+        assert_eq!(tasks.tasks[0].id, "1");
+        assert_eq!(tasks.tasks[0].dependencies[0], "2");
+        assert_eq!(tasks.tasks[1].id, "2");
+        assert_eq!(tasks.tasks[1].dependencies[0], "1");
     }
 }

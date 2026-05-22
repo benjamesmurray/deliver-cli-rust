@@ -43,6 +43,7 @@ pub struct ScApprove {
 #[macros::mcp_tool(name = "sc_todo_start", description = "Mark a task as being actively worked on")]
 #[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
 pub struct ScTodoStart {
+    #[serde(deserialize_with = "crate::manager::spec_manager::deserialize_flexible_string")]
     pub id: String,
     pub feature: Option<String>,
 }
@@ -50,6 +51,7 @@ pub struct ScTodoStart {
 #[macros::mcp_tool(name = "sc_todo_complete", description = "Complete a task")]
 #[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
 pub struct ScTodoComplete {
+    #[serde(deserialize_with = "crate::manager::spec_manager::deserialize_flexible_string")]
     pub id: String,
     pub feature: Option<String>,
 }
