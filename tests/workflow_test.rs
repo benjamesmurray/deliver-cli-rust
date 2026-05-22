@@ -65,6 +65,11 @@ fn test_workflow_lifecycle() {
         .output()
         .expect("Failed to run approve");
     assert!(output.status.success(), "Approve failed: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("✅ Phase \"Specification Document\" approved. You are now in the TASKS phase."));
+    assert!(stdout.contains("NEXT STEPS:"));
+    assert!(stdout.contains("Requirement: EACH task MUST have 'id' (numeric), 'title', 'description', and 'status'."));
+    
     let tasks_file_path = feature_path.join("Tasks.json");
     assert!(tasks_file_path.exists(), "Tasks.json should be auto-scaffolded after approve");
 

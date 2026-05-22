@@ -204,7 +204,7 @@ impl SpecManager {
         } else if !state.tasks.exists {
             phase = "specification";
             status = "approved";
-            next_steps = "Specification approved. Proceeding to implementation planning (TASKS phase).".to_string();
+            next_steps = "Specification Document approved. Proceeding to implementation planning (TASKS phase).".to_string();
         } else if !state.tasks.edited {
             phase = "tasks";
             status = "drafting";
@@ -298,8 +298,11 @@ impl SpecManager {
         let approved_path = feature_path.join(format!(".spec-{}-approved", phase));
         fs::write(approved_path, chrono::Utc::now().to_rfc3339())?;
         
-        let display_name = loader.spec.global_config.stage_names.get(&phase).cloned().unwrap_or(phase);
-        let approve_msg = format!("✅ Phase \"{}\" approved.", display_name);
+        let display_name = loader.spec.global_config.stage_names.get(&phase).cloned().unwrap_or(phase.clone());
+        let mut approve_msg = format!("✅ Phase \"{}\" approved.", display_name);
+        if phase == "specification" {
+            approve_msg.push_str(" You are now in the TASKS phase.");
+        }
 
         // Auto-advance to next phase
         match self.plan(base_dir, feature_name, None, loader) {
@@ -490,7 +493,7 @@ impl SpecManager {
             }
             fs::write(feature_path.join(tasks_file), content)?;
             fs::write(feature_path.join(".epoch-context.md"), "# Epoch Context\n\n**Current Phase:** Implementation Planning\n\n")?;
-            message = format!("✅ Specification approved. You are now in the TASKS phase. NEXT STEPS:\n1. Use 'read' to examine the generated '{}' template.\n2. Define your atomic implementation tasks in '{}'.\n3. Run 'sc_approve' to finalize the plan and unlock Build Mode.", 
+            message = format!("You are now in the TASKS phase.\n\nNEXT STEPS:\n1. Use 'read' to examine the generated '{}' template.\n2. Define your atomic implementation tasks in '{}'.\n   Requirement: EACH task MUST have 'id' (numeric), 'title', 'description', and 'status'.\n3. Run 'sc_approve' to finalize the plan and unlock Build Mode.", 
                 tasks_file, tasks_file);
         } else if !state.tasks.edited {
             message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("tasks").unwrap());

@@ -77,7 +77,7 @@ x-global-config:
     completed: "Completed"
   
   stage_names:
-    specification: "Specification"
+    specification: "Specification Document"
     tasks: "Implementation Planning"
     completed: "Completed"
   
