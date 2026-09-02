@@ -105,6 +105,15 @@ impl DeliverServerHandler {
 
 #[async_trait]
 impl ServerHandler for DeliverServerHandler {
+    async fn handle_custom_request(
+        &self,
+        _request: schema_utils::CustomRequest,
+        runtime: Arc<dyn McpServer>,
+    ) -> std::result::Result<GenericResult, RpcError> {
+        let server_info = runtime.server_info().to_owned();
+        Ok(server_info.into())
+    }
+
     async fn handle_list_tools_request(
         &self,
         _request: Option<PaginatedRequestParams>,
