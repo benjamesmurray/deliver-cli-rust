@@ -38,17 +38,22 @@ deliver-cli init --name "user-authentication" --description "Implement JWT-based
     *   `step-through`: Requires human approval (`sc_approve`) after each phase.
     *   `one-shot`: Designed for fully autonomous execution where the agent can move between phases without explicit blocking gates.
 
+### `domain` (string, optional)
+*   **Purpose**: Assigns the feature to a specific subsystem or domain taxonomy (e.g. defined in `.spec.json`).
+*   **Behavior**: Persisted in `.spec-meta.json` and noted in `.epoch-context.md`. Upon completion, `sc_plan` / `deliver-cli archive` partitions the archive by domain: `projects/completed/<domain>/<YYYY-MM-DD>_<feature>`.
+
 ## What Happens During Initialization?
 
 When `sc_init` is executed, the following actions occur:
 
 1.  **Directory Creation**: Creates a new folder in `projects/active/` based on the `name`.
-2.  **Specification Scaffolding**: 
+2.  **Metadata Persistence**: Generates `.spec-meta.json` tracking feature name, domain, and creation timestamp.
+3.  **Specification Scaffolding**: 
     *   Generates `Specification.md` using the project's default template.
     *   Injects the `name` and `description` into the template variables.
-3.  **Epoch Context**: Creates a `.epoch-context.md` file to track focus and open questions.
-4.  **Mode Selection**: Persists the chosen `mode` into a hidden `.spec-mode` file.
-5.  **Status Report**: Returns a `spec_status` summary indicating that the project is now in the `drafting` phase.
+4.  **Epoch Context**: Creates a `.epoch-context.md` file to track focus and open questions.
+5.  **Mode Selection**: Persists the chosen `mode` into a hidden `.spec-mode` file.
+6.  **Status Report**: Returns a `spec_status` summary indicating that the project is now in the `drafting` phase.
 
 ## Next Steps
 

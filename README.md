@@ -15,20 +15,21 @@ There are two ways to interact with `deliver-cli`: via the **CLI** (for humans) 
 
 | CLI Command | MCP Tool | Purpose |
 | :--- | :--- | :--- |
-| `deliver-cli init` | `sc_init` | Initialize a new feature and scaffold `Specification.md` |
+| `deliver-cli init --name <name> [--domain <domain>]` | `sc_init` | Initialize a new feature, persist domain metadata, and scaffold `Specification.md` |
 | `deliver-cli status` | `sc_status` | Check the current phase, status, and next steps |
 | `deliver-cli approve` | `sc_approve` | Approve current phase and **auto-scaffold next phase** |
 | `deliver-cli plan` | `sc_plan` | Advance workflow or provide implementation instructions |
 | `deliver-cli todo start --id <id>` | `sc_todo_start` | Mark a specific task as "In Progress" |
 | `deliver-cli todo complete --id <id>` | `sc_todo_complete` | Mark a specific task as "Completed" |
+| `deliver-cli archive` | `sc_plan` | Move finished feature to timestamped/domain archive directory |
 
 ## Example End-to-End Workflow
 
 Here is the exact sequence an AI agent or human would follow to complete a project called `user-auth`:
 
 ### Phase 1: Specification
-1.  **Initialize**: `sc_init(name="user-auth", description="Add JWT auth")`
-    *   Creates `projects/active/user-auth/Specification.md`.
+1.  **Initialize**: `sc_init(name="user-auth", description="Add JWT auth", domain="02_auth_and_security")`
+    *   Creates `projects/active/user-auth/Specification.md` and `.spec-meta.json`.
 2.  **Draft**: The agent writes the technical requirements and architecture into `Specification.md`.
 3.  **Check Status**: `sc_status()`
     *   Shows `phase: specification`, `status: drafting`.
@@ -47,14 +48,33 @@ Here is the exact sequence an AI agent or human would follow to complete a proje
 10. **Build**: The agent performs the actual coding work.
 11. **Complete Task**: `sc_todo_complete(id="1.1")`
     *   Updates task status in `Tasks.json` to `"completed"`.
-12. **Archive**: Once all tasks are `"completed"`, `sc_plan()` will automatically move the project to `projects/completed/`.
+12. **Archive**: Once all tasks are `"completed"`, `sc_plan()` will automatically archive the project with a timestamp (e.g. `projects/completed/<domain>/<YYYY-MM-DD>_<feature>` or `projects/completed/<YYYY-MM-DD>_<feature>`).
 
 ## Features
 
 - **2-Phase Orchestration**: Simplified "Specification -> Tasks" workflow to reduce agent overhead.
 - **JSON Task Management**: Deterministic task tracking using `Tasks.json` to eliminate LLM parsing errors.
+- **Domain Taxonomy & Timestamped Archival**: Repository-level domain configuration (`.spec.json`) and timestamped archival (`projects/completed/<domain>/<YYYY-MM-DD>_<feature>`) preventing directory clutter.
 - **Epoch Context**: Short-term memory management via `deliver-cli epoch` to track focus, intentions, and open questions.
 - **Approval Gates**: Requires explicit human approval before advancing from Specification to Implementation.
+
+## Domain Taxonomy Configuration (`.spec.json`)
+
+Repositories can define standardized subsystem domains in a `.spec.json` file in the project root:
+
+```json
+{
+  "completed_directory": "projects/completed",
+  "archive_format": "{domain}/{date}_{feature}",
+  "domains": [
+    "01_level_detection_and_swings",
+    "02_regimes_and_phases",
+    "05_backtest_analyser_and_scenarios"
+  ]
+}
+```
+
+When initializing features with `--domain` (or MCP `domain` argument), metadata is saved to `.spec-meta.json` and features are automatically partitioned into their respective domain folders upon archival. If domains are omitted or unconfigured, archival gracefully falls back to `<YYYY-MM-DD>_<feature>`.
 
 ## Installation
 

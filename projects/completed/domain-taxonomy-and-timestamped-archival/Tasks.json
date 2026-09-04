@@ -1,0 +1,48 @@
+{
+  "template_tags_present": false,
+  "tasks": [
+    {
+      "id": "1.1",
+      "title": "SpecConfig & SpecMeta Data Structures and Path Formatting",
+      "description": "Define SpecConfig and SpecMeta structs, config file loading from .spec.json, and archive path format resolution.",
+      "status": "completed",
+      "dependencies": []
+    },
+    {
+      "id": "1.2",
+      "title": "Domain Assignment & Metadata Persistence in sc_init",
+      "description": "Add domain support to SpecManager::init, CLI commands, and MCP ScInit tool, generating .spec-meta.json upon feature creation.",
+      "status": "completed",
+      "dependencies": [
+        "1.1"
+      ]
+    },
+    {
+      "id": "1.3",
+      "title": "Timestamped Domain-Aware Archival in sc_plan and archive",
+      "description": "Implement domain-aware timestamped directory moves in SpecManager::archive, creating domain hierarchy and updating .spec_last_used.",
+      "status": "completed",
+      "dependencies": [
+        "1.2"
+      ]
+    },
+    {
+      "id": "1.4",
+      "title": "Feature Path Resolution for Domain-Partitioned Archives",
+      "description": "Enhance SpecManager::resolve_feature_path to discover features nested within completed domain directories and timestamped folders.",
+      "status": "completed",
+      "dependencies": [
+        "1.3"
+      ]
+    },
+    {
+      "id": "1.5",
+      "title": "Integration Testing & Verification",
+      "description": "Add comprehensive unit and integration tests covering domain config, init with domain, archival formatting, and backwards compatibility.",
+      "status": "completed",
+      "dependencies": [
+        "1.4"
+      ]
+    }
+  ]
+}

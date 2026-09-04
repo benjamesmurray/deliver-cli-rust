@@ -47,8 +47,8 @@ async fn main() -> Result<()> {
             let status = manager.get_status_summary(&base_dir, feature.as_deref(), &loader);
             println!("Project state verified.\n\n{}", status);
         }
-        Commands::Init { name, description, mode, .. } => {
-            let output = manager.init(&base_dir, name, description, mode, &loader)?;
+        Commands::Init { name, description, mode, domain, .. } => {
+            let output = manager.init(&base_dir, name, description, mode, domain, &loader)?;
             println!("{}", output);
         }
         Commands::Approve { feature } => {
