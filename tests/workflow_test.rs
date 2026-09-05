@@ -299,3 +299,129 @@ fn test_workflow_domain_archival() {
     assert!(stdout.contains("status: archived"));
     assert!(stdout.contains("domain: 05_backtest_analyser_and_scenarios"));
 }
+
+#[test]
+fn test_archive_prunes_empty_parent_directories() {
+    let dir = tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    fs::write(root.join(".spec_root"), "").unwrap();
+
+    let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
+    let spec_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/assets/default-spec.yaml").canonicalize().unwrap();
+
+    // Create a nested feature in projects/active/06_domain/my-nested-feature
+    let nested_domain = root.join("projects/active/06_domain");
+    let feature_dir = nested_domain.join("my-nested-feature");
+    fs::create_dir_all(&feature_dir).unwrap();
+
+    // Scaffold valid completed Tasks.json & Specification.md
+    fs::write(feature_dir.join("Specification.md"), "# Spec\nValid spec").unwrap();
+    let tasks_json = r#"{
+        "template_tags_present": false,
+        "tasks": [
+            {
+                "id": "1.1",
+                "title": "Task 1",
+                "description": "Done",
+                "status": "completed",
+                "dependencies": []
+            }
+        ]
+    }"#;
+    fs::write(feature_dir.join("Tasks.json"), tasks_json).unwrap();
+
+    // Run archive via CLI
+    let output = Command::new(bin_path)
+        .args(&["archive", "--feature", "06_domain/my-nested-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run archive");
+    assert!(output.status.success(), "Archive failed: {}", String::from_utf8_lossy(&output.stderr));
+
+    // Verify parent directory 06_domain was pruned
+    assert!(!nested_domain.exists(), "Empty parent domain directory should have been pruned");
+    // Verify projects/active root still exists
+    assert!(root.join("projects/active").exists(), "projects/active should still exist");
+}
+
+#[test]
+fn test_clean_empty_nested_active_directories() {
+    let dir = tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    fs::write(root.join(".spec_root"), "").unwrap();
+
+    let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
+
+    let empty_deep_dir = root.join("projects/active/empty_domain/empty_sub");
+    fs::create_dir_all(&empty_deep_dir).unwrap();
+
+    let occupied_dir = root.join("projects/active/active_domain/feature");
+    fs::create_dir_all(&occupied_dir).unwrap();
+    fs::write(occupied_dir.join("dummy.txt"), "hello").unwrap();
+
+    // Run clean via CLI
+    let output = Command::new(bin_path)
+        .arg("clean")
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run clean");
+    assert!(output.status.success(), "Clean failed: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Cleaned 2 empty director(ies)"));
+
+    assert!(!root.join("projects/active/empty_domain").exists());
+    assert!(root.join("projects/active/active_domain/feature").exists());
+}
+
+#[test]
+fn test_abort_active_feature_and_prunes_parents() {
+    let dir = tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    fs::write(root.join(".spec_root"), "").unwrap();
+
+    let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
+    let nested_domain = root.join("projects/active/temp_domain");
+    let feature_dir = nested_domain.join("abandoned-feature");
+    fs::create_dir_all(&feature_dir).unwrap();
+    fs::write(feature_dir.join("Specification.md"), "abandoned").unwrap();
+
+    // Set .spec_last_used to this feature
+    fs::write(root.join(".spec_last_used"), "projects/active/temp_domain/abandoned-feature").unwrap();
+
+    // Run abort via CLI
+    let output = Command::new(bin_path)
+        .args(&["abort", "--feature", "temp_domain/abandoned-feature"])
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run abort");
+    assert!(output.status.success(), "Abort failed: {}", String::from_utf8_lossy(&output.stderr));
+
+    // Feature should be gone
+    assert!(!feature_dir.exists());
+    // Empty parent domain should be cleaned
+    assert!(!nested_domain.exists());
+    // .spec_last_used pointing to it should be removed
+    assert!(!root.join(".spec_last_used").exists());
+}
+
+#[test]
+fn test_abort_fails_for_non_active_feature() {
+    let dir = tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    fs::write(root.join(".spec_root"), "").unwrap();
+
+    let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
+    let completed_feature = root.join("projects/completed/finished-feature");
+    fs::create_dir_all(&completed_feature).unwrap();
+    fs::write(completed_feature.join("Specification.md"), "done").unwrap();
+
+    let output = Command::new(bin_path)
+        .args(&["abort", "--feature", "projects/completed/finished-feature"])
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run abort");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Cannot abort a feature that is not in projects/active"));
+}

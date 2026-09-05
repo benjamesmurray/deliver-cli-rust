@@ -131,6 +131,14 @@ async fn main() -> Result<()> {
             let output = manager.plan(&base_dir, feature.as_deref(), instruction.as_deref(), &loader)?;
             println!("{}", output);
         }
+        Commands::Clean => {
+            let output = manager.clean(&base_dir)?;
+            println!("{}", output);
+        }
+        Commands::Abort { feature } => {
+            let output = manager.abort(&base_dir, feature.as_deref())?;
+            println!("{}", output);
+        }
     }
 
     Ok(())

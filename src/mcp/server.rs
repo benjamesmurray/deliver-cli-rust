@@ -57,6 +57,16 @@ pub struct ScTodoComplete {
     pub feature: Option<String>,
 }
 
+#[macros::mcp_tool(name = "sc_clean", description = "Prune empty directories in projects/active")]
+#[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
+pub struct ScClean {}
+
+#[macros::mcp_tool(name = "sc_abort", description = "Abort and remove an active feature")]
+#[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
+pub struct ScAbort {
+    pub feature: Option<String>,
+}
+
 pub struct DeliverServerHandler {
     pub manager: SpecManager,
     pub loader: OpenApiLoader,
@@ -128,6 +138,8 @@ impl ServerHandler for DeliverServerHandler {
                 ScApprove::tool(),
                 ScTodoStart::tool(),
                 ScTodoComplete::tool(),
+                ScClean::tool(),
+                ScAbort::tool(),
             ],
             meta: None,
             next_cursor: None,
@@ -175,6 +187,16 @@ impl ServerHandler for DeliverServerHandler {
                 let args: ScTodoComplete = serde_json::from_value(serde_json::Value::Object(params.arguments.unwrap_or_default()))
                     .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
                 self.manager.complete_task(&self.base_dir, args.feature.as_deref(), &args.id, &self.loader)
+                    .map_err(|e| CallToolError::from_message(e.to_string()))?
+            }
+            "sc_clean" => {
+                self.manager.clean(&self.base_dir)
+                    .map_err(|e| CallToolError::from_message(e.to_string()))?
+            }
+            "sc_abort" => {
+                let args: ScAbort = serde_json::from_value(serde_json::Value::Object(params.arguments.unwrap_or_default()))
+                    .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
+                self.manager.abort(&self.base_dir, args.feature.as_deref())
                     .map_err(|e| CallToolError::from_message(e.to_string()))?
             }
             _ => return Err(CallToolError::unknown_tool(params.name)),

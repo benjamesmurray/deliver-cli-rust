@@ -82,6 +82,13 @@ pub enum Commands {
         #[arg(short, long)]
         feature: Option<String>,
     },
+    /// Prune empty directories in projects/active
+    Clean,
+    /// Abort and remove an active feature specification
+    Abort {
+        #[arg(short, long)]
+        feature: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

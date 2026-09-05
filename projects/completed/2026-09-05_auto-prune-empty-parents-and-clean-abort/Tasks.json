@@ -1,0 +1,49 @@
+{
+  "template_tags_present": false,
+  "tasks": [
+    {
+      "id": "1.1",
+      "title": "Implement auto-prune of empty parent directories on archive in SpecManager",
+      "description": "In src/manager/spec_manager.rs, update archive() so that after moving the feature to target_path, any empty parent directories inside projects/active are pruned ascending towards projects/active root.",
+      "status": "completed",
+      "dependencies": []
+    },
+    {
+      "id": "1.2",
+      "title": "Implement SpecManager::clean and SpecManager::abort",
+      "description": "In src/manager/spec_manager.rs, implement clean() to recursively prune empty directories within projects/active, and abort() to delete an active feature folder, clear .spec_last_used if matching, and prune empty parent folders.",
+      "status": "completed",
+      "dependencies": [
+        "1.1"
+      ]
+    },
+    {
+      "id": "2.1",
+      "title": "Add Clean and Abort CLI subcommands and dispatch in main.rs",
+      "description": "In src/cli/commands.rs, add Clean and Abort subcommands to Commands enum. In src/main.rs, wire up dispatch to manager.clean and manager.abort.",
+      "status": "completed",
+      "dependencies": [
+        "1.2"
+      ]
+    },
+    {
+      "id": "3.1",
+      "title": "Expose sc_clean and sc_abort MCP tools in server.rs",
+      "description": "In src/mcp/server.rs, define ScClean and ScAbort tool structs with macros, register them in handle_list_tools_request, and dispatch them in handle_call_tool_request.",
+      "status": "completed",
+      "dependencies": [
+        "1.2"
+      ]
+    },
+    {
+      "id": "4.1",
+      "title": "Comprehensive unit tests, version bump, and release build verification",
+      "description": "Add unit tests verifying archive pruning, clean, and abort in tests/. Bump version in Cargo.toml to 0.1.19. Verify full test suite passes with cargo test and cargo build --release.",
+      "status": "completed",
+      "dependencies": [
+        "2.1",
+        "3.1"
+      ]
+    }
+  ]
+}

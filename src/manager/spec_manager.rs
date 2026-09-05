@@ -565,9 +565,94 @@ impl SpecManager {
             Err(e) => return Err(e.into()),
         }
 
+        // After moving current_path to target_path:
+        // If current_path had a parent inside projects/active (and was not projects/active itself), prune if empty.
+        let active_root = root_dir.join("projects/active");
+        if let Some(parent) = current_path.parent() {
+            let mut curr_parent = parent.to_path_buf();
+            while curr_parent.starts_with(&active_root) && curr_parent != active_root {
+                if let Ok(mut entries) = fs::read_dir(&curr_parent) {
+                    if entries.next().is_none() {
+                        let _ = fs::remove_dir(&curr_parent);
+                    } else {
+                        break; // Not empty, stop ascending
+                    }
+                } else {
+                    break;
+                }
+                if let Some(up) = curr_parent.parent() {
+                    curr_parent = up.to_path_buf();
+                } else {
+                    break;
+                }
+            }
+        }
+
         let rel_target_str = target_path.strip_prefix(&root_dir).unwrap_or(&target_path);
         fs::write(root_dir.join(Self::LAST_USED_FILE), rel_target_str.to_string_lossy().as_bytes())?;
         Ok(format!("Successfully archived project to {}.", rel_target_str.to_string_lossy()))
+    }
+
+    pub fn clean(&self, base_dir: &Path) -> Result<String> {
+        let root_dir = Self::find_project_root(base_dir);
+        let active_dir = root_dir.join("projects/active");
+        if !active_dir.exists() {
+            return Ok("No projects/active directory found.".to_string());
+        }
+
+        let mut removed = Vec::new();
+        fn prune_empty_dirs(dir: &Path, removed: &mut Vec<PathBuf>) -> Result<()> {
+            for entry in fs::read_dir(dir)?.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    prune_empty_dirs(&path, removed)?;
+                    if fs::read_dir(&path)?.next().is_none() {
+                        fs::remove_dir(&path)?;
+                        removed.push(path);
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        prune_empty_dirs(&active_dir, &mut removed)?;
+        if removed.is_empty() {
+            Ok("No empty active directories to clean.".to_string())
+        } else {
+            Ok(format!("Cleaned {} empty director(ies): {:?}", removed.len(), removed))
+        }
+    }
+
+    pub fn abort(&self, base_dir: &Path, feature_name: Option<&str>) -> Result<String> {
+        let root_dir = Self::find_project_root(base_dir);
+        let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
+        let active_dir = root_dir.join("projects/active");
+
+        if feature_path == active_dir || !feature_path.starts_with(&active_dir) {
+            return Err(anyhow!("Cannot abort a feature that is not in projects/active."));
+        }
+
+        // Remove the feature folder
+        fs::remove_dir_all(&feature_path)?;
+
+        // Reset last_used if pointing to this feature
+        let last_used_file = root_dir.join(Self::LAST_USED_FILE);
+        if last_used_file.exists() {
+            if let Ok(content) = fs::read_to_string(&last_used_file) {
+                let last_used_str = content.trim();
+                let last_used_path = root_dir.join(last_used_str);
+                if last_used_path == feature_path || !last_used_path.exists() {
+                    let _ = fs::remove_file(&last_used_file);
+                }
+            } else {
+                let _ = fs::remove_file(&last_used_file);
+            }
+        }
+
+        // Clean up empty parent directories if any
+        self.clean(base_dir)?;
+
+        Ok(format!("Successfully aborted and removed active feature: {}", feature_path.display()))
     }
 
     pub fn start_task(&self, base_dir: &Path, feature_name: Option<&str>, task_id: &str, loader: &OpenApiLoader) -> Result<String> {

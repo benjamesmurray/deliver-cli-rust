@@ -21,7 +21,9 @@ There are two ways to interact with `deliver-cli`: via the **CLI** (for humans) 
 | `deliver-cli plan` | `sc_plan` | Advance workflow or provide implementation instructions |
 | `deliver-cli todo start --id <id>` | `sc_todo_start` | Mark a specific task as "In Progress" |
 | `deliver-cli todo complete --id <id>` | `sc_todo_complete` | Mark a specific task as "Completed" |
-| `deliver-cli archive` | `sc_plan` | Move finished feature to timestamped/domain archive directory |
+| `deliver-cli archive` | `sc_plan` | Move finished feature to timestamped/domain archive directory and prune empty parent folders |
+| `deliver-cli clean` | `sc_clean` | Recursively prune empty directories in `projects/active` |
+| `deliver-cli abort [--feature <name>]` | `sc_abort` | Abort and remove an active feature specification, reset context, and prune empty parents |
 
 ## Example End-to-End Workflow
 
@@ -55,6 +57,7 @@ Here is the exact sequence an AI agent or human would follow to complete a proje
 - **2-Phase Orchestration**: Simplified "Specification -> Tasks" workflow to reduce agent overhead.
 - **JSON Task Management**: Deterministic task tracking using `Tasks.json` to eliminate LLM parsing errors.
 - **Domain Taxonomy & Timestamped Archival**: Repository-level domain configuration (`.spec.json`) and timestamped archival (`projects/completed/<domain>/<YYYY-MM-DD>_<feature>`) preventing directory clutter.
+- **Auto-Pruning & Directory Cleanup**: Automatically prunes empty parent directories when archiving features, with dedicated `clean` and `abort` operations to maintain a tidy `projects/active` tree.
 - **Epoch Context**: Short-term memory management via `deliver-cli epoch` to track focus, intentions, and open questions.
 - **Approval Gates**: Requires explicit human approval before advancing from Specification to Implementation.
 
