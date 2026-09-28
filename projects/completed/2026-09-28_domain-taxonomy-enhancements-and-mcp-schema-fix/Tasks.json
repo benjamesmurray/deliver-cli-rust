@@ -1,0 +1,66 @@
+{
+  "template_tags_present": false,
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Fix ScInit MCP Tool Schema",
+      "description": "Remove extra HashMap from ScInit in src/mcp/server.rs so rust-mcp-sdk derives clean JSON Schema with name as required, and domain, description, mode as optional.",
+      "status": "completed",
+      "dependencies": []
+    },
+    {
+      "id": "2",
+      "title": "Implement Domain Auto-Discovery in SpecConfig",
+      "description": "In SpecConfig::load_config in src/manager/spec_manager.rs, auto-discover domain directories in projects/completed/ matching '\\d{2}_.*' when domains list is empty or .spec.json is absent.",
+      "status": "completed",
+      "dependencies": []
+    },
+    {
+      "id": "3",
+      "title": "Add set_domain, get_domain, and list_domains in SpecManager",
+      "description": "Implement SpecManager methods to mutate .spec-meta.json and update .epoch-context.md with the newly assigned domain for active features, and list all known domains.",
+      "status": "completed",
+      "dependencies": [
+        "2"
+      ]
+    },
+    {
+      "id": "4",
+      "title": "Wire CLI Domain Subcommands",
+      "description": "Add Commands::Domain with Set, Get, and List actions in src/cli/commands.rs and dispatch them in src/main.rs.",
+      "status": "completed",
+      "dependencies": [
+        "3"
+      ]
+    },
+    {
+      "id": "5",
+      "title": "Expose sc_domain MCP Tool",
+      "description": "Define ScDomain tool struct in src/mcp/server.rs, add to tools/list, and handle tool execution in handle_call_tool_request.",
+      "status": "completed",
+      "dependencies": [
+        "3"
+      ]
+    },
+    {
+      "id": "6",
+      "title": "Unit and Integration Tests",
+      "description": "Add tests in tests/mcp_test.rs verifying sc_init schema cleanliness and sc_domain execution, and in tests/workflow_test.rs verifying post-init domain setting and auto-discovery archival.",
+      "status": "completed",
+      "dependencies": [
+        "1",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "id": "7",
+      "title": "Documentation, Version Bump (v0.1.20), and Release Verification",
+      "description": "Bump Cargo.toml to 0.1.20, update README.md and SC_INIT_GUIDE.md, run full test suite, and prepare release steps for crates.io and local installation.",
+      "status": "completed",
+      "dependencies": [
+        "6"
+      ]
+    }
+  ]
+}

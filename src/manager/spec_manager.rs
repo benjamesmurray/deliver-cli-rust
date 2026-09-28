@@ -43,6 +43,27 @@ impl Default for SpecConfig {
 }
 
 impl SpecConfig {
+    pub fn discover_domains(completed_dir: &Path) -> Vec<String> {
+        let mut domains = Vec::new();
+        if let Ok(entries) = fs::read_dir(completed_dir) {
+            for entry in entries.flatten() {
+                if let Ok(ft) = entry.file_type() {
+                    if ft.is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        let is_domain = name.split_once('_').map(|(prefix, _)| {
+                            prefix.chars().all(|c| c.is_ascii_digit()) && !prefix.is_empty() && prefix.len() <= 3
+                        }).unwrap_or(false);
+                        if is_domain {
+                            domains.push(name);
+                        }
+                    }
+                }
+            }
+        }
+        domains.sort();
+        domains
+    }
+
     pub fn compute_archive_rel_path(&self, feature: &str, domain: Option<&str>, date: &str) -> PathBuf {
         let has_domains_configured = !self.domains.is_empty();
         let resolved_domain = if has_domains_configured {
@@ -170,7 +191,7 @@ impl SpecManager {
         if json_path.exists() {
             if let Ok(content) = fs::read_to_string(&json_path) {
                 if let Ok(config) = serde_json::from_str::<SpecConfig>(&content) {
-                    return config;
+                    return Self::with_auto_discovery(root_dir, config);
                 }
             }
         }
@@ -178,11 +199,19 @@ impl SpecManager {
         if antigravity_path.exists() {
             if let Ok(content) = fs::read_to_string(&antigravity_path) {
                 if let Ok(config) = serde_json::from_str::<SpecConfig>(&content) {
-                    return config;
+                    return Self::with_auto_discovery(root_dir, config);
                 }
             }
         }
-        SpecConfig::default()
+        Self::with_auto_discovery(root_dir, SpecConfig::default())
+    }
+
+    fn with_auto_discovery(root_dir: &Path, mut config: SpecConfig) -> SpecConfig {
+        if config.domains.is_empty() {
+            let completed_path = root_dir.join(&config.completed_directory);
+            config.domains = SpecConfig::discover_domains(&completed_path);
+        }
+        config
     }
 
     pub fn find_project_root(start_dir: &Path) -> PathBuf {
@@ -742,6 +771,57 @@ impl SpecManager {
 
         Ok(format!("✅ Task {} marked as completed!", task_id))
     }
+
+    pub fn set_domain(&self, base_dir: &Path, feature_name: Option<&str>, domain: &str, loader: &OpenApiLoader) -> Result<String> {
+        let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
+        if !feature_path.exists() {
+            return Err(anyhow!("Active feature directory does not exist: {:?}", feature_path));
+        }
+
+        let root = Self::find_project_root(base_dir);
+        let config = Self::load_config(&root);
+        if !config.domains.is_empty() && !config.domains.contains(&domain.to_string()) {
+            eprintln!("⚠️ Warning: Domain '{}' is not recognized in taxonomy. Known domains: {:?}", domain, config.domains);
+        }
+
+        let mut meta = SpecMeta::load_from_dir(&feature_path).unwrap_or_else(|| SpecMeta {
+            feature: feature_path.file_name().unwrap().to_string_lossy().to_string(),
+            domain: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        });
+        meta.domain = Some(domain.to_string());
+        meta.save_to_dir(&feature_path)?;
+
+        let epoch_path = feature_path.join(".epoch-context.md");
+        if epoch_path.exists() {
+            let content = fs::read_to_string(&epoch_path)?;
+            let updated = if content.contains("**Domain:**") {
+                let re = regex::Regex::new(r"\*\*Domain:\*\*[^\n]*").unwrap();
+                re.replace(&content, format!("**Domain:** {}", domain)).to_string()
+            } else if content.contains("**Current Phase:**") {
+                let re = regex::Regex::new(r"(\*\*Current Phase:\*\*[^\n]*)").unwrap();
+                re.replace(&content, format!("$1\n**Domain:** {}", domain)).to_string()
+            } else {
+                format!("{}\n\n**Domain:** {}\n", content.trim_end(), domain)
+            };
+            fs::write(epoch_path, updated)?;
+        }
+
+        Ok(format!("✅ Domain set to '{}' for feature '{}'.\n\n{}", domain, meta.feature, self.get_status_summary(base_dir, feature_name, loader)))
+    }
+
+    pub fn get_domain(&self, base_dir: &Path, feature_name: Option<&str>) -> Result<Option<String>> {
+        let feature_path = Self::resolve_feature_path(base_dir, feature_name)?;
+        let meta = SpecMeta::load_from_dir(&feature_path);
+        Ok(meta.and_then(|m| m.domain))
+    }
+
+    pub fn list_domains(&self, base_dir: &Path) -> Result<Vec<String>> {
+        let root = Self::find_project_root(base_dir);
+        let config = Self::load_config(&root);
+        Ok(config.domains)
+    }
+
     pub fn init(&self, base_dir: &Path, name: String, description: Option<String>, mode: Option<String>, domain: Option<String>, loader: &OpenApiLoader) -> Result<String> {
         let feature_name = name;
 

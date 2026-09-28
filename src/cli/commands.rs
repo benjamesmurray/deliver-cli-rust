@@ -89,6 +89,28 @@ pub enum Commands {
         #[arg(short, long)]
         feature: Option<String>,
     },
+    /// Manage subsystem domain taxonomy
+    Domain {
+        #[command(subcommand)]
+        action: DomainAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DomainAction {
+    /// Set or update the domain of an active feature
+    Set {
+        domain: String,
+        #[arg(short, long)]
+        feature: Option<String>,
+    },
+    /// Get the domain of an active feature
+    Get {
+        #[arg(short, long)]
+        feature: Option<String>,
+    },
+    /// List all recognized or auto-discovered subsystem domains
+    List,
 }
 
 #[derive(Subcommand)]

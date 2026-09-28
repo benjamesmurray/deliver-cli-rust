@@ -24,6 +24,9 @@ There are two ways to interact with `deliver-cli`: via the **CLI** (for humans) 
 | `deliver-cli archive` | `sc_plan` | Move finished feature to timestamped/domain archive directory and prune empty parent folders |
 | `deliver-cli clean` | `sc_clean` | Recursively prune empty directories in `projects/active` |
 | `deliver-cli abort [--feature <name>]` | `sc_abort` | Abort and remove an active feature specification, reset context, and prune empty parents |
+| `deliver-cli domain set <domain> [--feature <name>]` | `sc_domain` | Set or update the subsystem domain for an active feature |
+| `deliver-cli domain list` | — | List all configured or auto-discovered subsystem domains |
+| `deliver-cli domain get [--feature <name>]` | — | Get the assigned subsystem domain for an active feature |
 
 ## Example End-to-End Workflow
 
@@ -76,8 +79,16 @@ Repositories can define standardized subsystem domains in a `.spec.json` file in
   ]
 }
 ```
+ 
+When initializing features with `--domain` (or MCP `domain` argument), metadata is saved to `.spec-meta.json` and features are automatically partitioned into their respective domain folders upon archival.
 
-When initializing features with `--domain` (or MCP `domain` argument), metadata is saved to `.spec-meta.json` and features are automatically partitioned into their respective domain folders upon archival. If domains are omitted or unconfigured, archival gracefully falls back to `<YYYY-MM-DD>_<feature>`.
+If `.spec.json` is omitted or does not define `domains`, `deliver-cli` **automatically discovers** existing subsystem domain directories (`\d{2}_.*`) in `projects/completed/`.
+
+If a domain was not provided during initialization, you can assign or update it at any time before archival using:
+- CLI: `deliver-cli domain set <domain>`
+- MCP: `sc_domain(domain="<domain>")`
+
+If domains are omitted or unconfigured, archival gracefully falls back to `<YYYY-MM-DD>_<feature>`.
 
 ## Installation
 

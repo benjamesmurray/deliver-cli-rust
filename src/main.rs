@@ -8,7 +8,7 @@ mod mcp;
 use std::path::Path;
 use clap::Parser;
 use anyhow::Result;
-use crate::cli::commands::{Cli, Commands, TodoAction};
+use crate::cli::commands::{Cli, Commands, TodoAction, DomainAction};
 use crate::manager::spec_manager::SpecManager;
 use crate::io::openapi_loader::OpenApiLoader;
 use std::fs;
@@ -138,6 +138,32 @@ async fn main() -> Result<()> {
         Commands::Abort { feature } => {
             let output = manager.abort(&base_dir, feature.as_deref())?;
             println!("{}", output);
+        }
+        Commands::Domain { action } => {
+            match action {
+                DomainAction::Set { domain, feature } => {
+                    let output = manager.set_domain(&base_dir, feature.as_deref(), &domain, &loader)?;
+                    println!("{}", output);
+                }
+                DomainAction::Get { feature } => {
+                    let domain = manager.get_domain(&base_dir, feature.as_deref())?;
+                    match domain {
+                        Some(d) => println!("Domain: {}", d),
+                        None => println!("No domain assigned."),
+                    }
+                }
+                DomainAction::List => {
+                    let domains = manager.list_domains(&base_dir)?;
+                    if domains.is_empty() {
+                        println!("No subsystem domains configured or discovered.");
+                    } else {
+                        println!("Recognized subsystem domains:");
+                        for d in domains {
+                            println!("  - {}", d);
+                        }
+                    }
+                }
+            }
         }
     }
 

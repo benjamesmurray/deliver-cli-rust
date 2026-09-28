@@ -425,3 +425,116 @@ fn test_abort_fails_for_non_active_feature() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("Cannot abort a feature that is not in projects/active"));
 }
+
+#[test]
+fn test_domain_cli_set_and_auto_discovery() {
+    let dir = tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    fs::write(root.join(".spec_root"), "").unwrap();
+
+    let bin_path = env!("CARGO_BIN_EXE_deliver-cli");
+    let spec_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/assets/default-spec.yaml").canonicalize().unwrap();
+
+    // 1. Create simulated completed domain directories (NO .spec.json!)
+    let d1 = root.join("projects/completed/05_backtest_analyser/dummy");
+    let d2 = root.join("projects/completed/06_execution_strategies/dummy");
+    fs::create_dir_all(&d1).unwrap();
+    fs::create_dir_all(&d2).unwrap();
+
+    // 2. Test domain list auto-discovery
+    let output = Command::new(bin_path)
+        .args(&["domain", "list"])
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run domain list");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("05_backtest_analyser"));
+    assert!(stdout.contains("06_execution_strategies"));
+
+    // 3. Init feature without domain
+    let output = Command::new(bin_path)
+        .args(&["init", "--name", "post-domain-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run init");
+    assert!(output.status.success());
+
+    // 4. Set domain post-init
+    let output = Command::new(bin_path)
+        .args(&["domain", "set", "05_backtest_analyser", "--feature", "post-domain-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run domain set");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Domain set to '05_backtest_analyser'"));
+
+    // 5. Get domain
+    let output = Command::new(bin_path)
+        .args(&["domain", "get", "--feature", "post-domain-feature"])
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run domain get");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Domain: 05_backtest_analyser"));
+
+    // 6. Verify .epoch-context.md was updated
+    let epoch_path = root.join("projects/active/post-domain-feature/.epoch-context.md");
+    let epoch_content = fs::read_to_string(&epoch_path).unwrap();
+    assert!(epoch_content.contains("**Domain:** 05_backtest_analyser"));
+
+    // 7. Advance and archive feature
+    let spec_file = root.join("projects/active/post-domain-feature/Specification.md");
+    fs::write(&spec_file, "# Post Domain Spec\nNo template tags here.").unwrap();
+
+    let output = Command::new(bin_path)
+        .args(&["approve", "--feature", "post-domain-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to approve spec");
+    assert!(output.status.success());
+
+    let tasks_json = r#"{
+        "template_tags_present": false,
+        "tasks": [
+            {
+                "id": "1",
+                "title": "Build Post Domain",
+                "description": "Done",
+                "status": "completed",
+                "dependencies": []
+            }
+        ]
+    }"#;
+    fs::write(root.join("projects/active/post-domain-feature/Tasks.json"), tasks_json).unwrap();
+
+    let output = Command::new(bin_path)
+        .args(&["approve", "--feature", "post-domain-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to approve tasks");
+    assert!(output.status.success());
+
+    // Plan -> archive
+    let output = Command::new(bin_path)
+        .args(&["plan", "--feature", "post-domain-feature"])
+        .env("SPEC_PATH", &spec_path)
+        .current_dir(&root)
+        .output()
+        .expect("Failed to run plan");
+    assert!(output.status.success());
+
+    // Verify archived into auto-discovered domain directory
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let expected_archive = root
+        .join("projects/completed")
+        .join("05_backtest_analyser")
+        .join(format!("{}_post-domain-feature", today));
+    assert!(expected_archive.exists(), "Expected archive at {:?}", expected_archive);
+}

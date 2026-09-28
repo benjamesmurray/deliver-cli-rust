@@ -24,8 +24,6 @@ pub struct ScInit {
     pub description: Option<String>,
     pub mode: Option<String>,
     pub domain: Option<String>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[macros::mcp_tool(name = "sc_plan", description = "Advance workflow phase")]
@@ -64,6 +62,13 @@ pub struct ScClean {}
 #[macros::mcp_tool(name = "sc_abort", description = "Abort and remove an active feature")]
 #[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
 pub struct ScAbort {
+    pub feature: Option<String>,
+}
+
+#[macros::mcp_tool(name = "sc_domain", description = "Set or update the subsystem domain for an active feature")]
+#[derive(Debug, Deserialize, Serialize, macros::JsonSchema)]
+pub struct ScDomain {
+    pub domain: String,
     pub feature: Option<String>,
 }
 
@@ -140,6 +145,7 @@ impl ServerHandler for DeliverServerHandler {
                 ScTodoComplete::tool(),
                 ScClean::tool(),
                 ScAbort::tool(),
+                ScDomain::tool(),
             ],
             meta: None,
             next_cursor: None,
@@ -163,6 +169,12 @@ impl ServerHandler for DeliverServerHandler {
                     .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
 
                 self.manager.init(&self.base_dir, args.name, args.description, args.mode, args.domain, &self.loader)
+                    .map_err(|e| CallToolError::from_message(e.to_string()))?
+            }
+            "sc_domain" => {
+                let args: ScDomain = serde_json::from_value(serde_json::Value::Object(params.arguments.unwrap_or_default()))
+                    .map_err(|e| CallToolError::invalid_arguments(tool_name, Some(e.to_string())))?;
+                self.manager.set_domain(&self.base_dir, args.feature.as_deref(), &args.domain, &self.loader)
                     .map_err(|e| CallToolError::from_message(e.to_string()))?
             }
             "sc_plan" => {

@@ -39,8 +39,9 @@ deliver-cli init --name "user-authentication" --description "Implement JWT-based
     *   `one-shot`: Designed for fully autonomous execution where the agent can move between phases without explicit blocking gates.
 
 ### `domain` (string, optional)
-*   **Purpose**: Assigns the feature to a specific subsystem or domain taxonomy (e.g. defined in `.spec.json`).
+*   **Purpose**: Assigns the feature to a specific subsystem or domain taxonomy (e.g. defined in `.spec.json` or auto-discovered).
 *   **Behavior**: Persisted in `.spec-meta.json` and noted in `.epoch-context.md`. Upon completion, `sc_plan` / `deliver-cli archive` partitions the archive by domain: `projects/completed/<domain>/<YYYY-MM-DD>_<feature>`.
+*   **Post-Init Mutation**: If omitted during initialization, the domain can be set or changed at any time prior to archival using `deliver-cli domain set <domain>` or MCP `sc_domain(domain="<domain>")`.
 
 ## What Happens During Initialization?
 
