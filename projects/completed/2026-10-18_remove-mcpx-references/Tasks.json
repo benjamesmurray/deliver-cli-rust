@@ -30,7 +30,7 @@
       "id": "2.1",
       "title": "Release",
       "description": "Bump to 0.1.21, commit, push to GitHub, cargo publish, cargo install locally.",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [
         "1.3"
       ]
