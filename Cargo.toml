@@ -4,7 +4,7 @@ version = "0.1.21"
 edition = "2024"
 description = "Streamlined MCP server for managing spec workflow (requirements, design, implementation)"
 license = "MIT"
-repository = "https://github.com/benmurray/deliver-cli-rust"
+repository = "https://github.com/benjamesmurray/deliver-cli-rust"
 
 [dependencies]
 anyhow = "1.0.102"
