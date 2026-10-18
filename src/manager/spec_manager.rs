@@ -384,7 +384,7 @@ impl SpecManager {
     pub fn get_status_summary(&self, base_dir: &Path, feature_name: Option<&str>, loader: &OpenApiLoader) -> String {
         let feature_path = match Self::resolve_feature_path(base_dir, feature_name) {
             Ok(p) => p,
-            Err(e) => return format!("spec_status:\n  phase: error\n  error: {}\n  next_step: use mcpx with server=\"spec\" tool=\"sc_init\" and name=\"your-feature\"", e),
+            Err(e) => return format!("spec_status:\n  phase: error\n  error: {}\n  next_step: call sc_init with name=\"your-feature\"", e),
         };
 
         let state = Self::get_workflow_state(&feature_path, loader);
@@ -425,7 +425,7 @@ impl SpecManager {
             next_steps = "Feature workflow complete.".to_string();
         } else if !state.specification.exists {
             phase = "specification";
-            next_steps = "use mcpx with server=\"spec\" and tool=\"sc_init\" to initialize specification.".to_string();
+            next_steps = "call sc_init to initialize specification.".to_string();
         } else if !state.specification.edited {
             phase = "specification";
             status = "drafting";
@@ -436,9 +436,9 @@ impl SpecManager {
             phase = "specification";
             status = "reviewing";
             if mode == "one-shot" {
-                next_steps = "Resolve ambiguities then use mcpx with server=\"spec\" and tool=\"sc_plan\".".to_string();
+                next_steps = "Resolve ambiguities then call sc_plan.".to_string();
             } else {
-                next_steps = "Review and use mcpx with server=\"spec\" and tool=\"sc_approve\".".to_string();
+                next_steps = "Review, then call sc_approve.".to_string();
             }
         } else if !state.tasks.exists {
             phase = "specification";
@@ -453,14 +453,14 @@ impl SpecManager {
             phase = "tasks";
             status = "reviewing";
             if mode == "one-shot" {
-                next_steps = "Resolve ambiguities then use mcpx with server=\"spec\" and tool=\"sc_todo_start\".".to_string();
+                next_steps = "Resolve ambiguities then call sc_todo_start.".to_string();
             } else {
-                next_steps = "Review and use mcpx with server=\"spec\" and tool=\"sc_approve\".".to_string();
+                next_steps = "Review, then call sc_approve.".to_string();
             }
         } else if !all_tasks_complete {
             phase = "implementation";
             status = "active";
-            next_steps = "Proceed with tasks using mcpx with server=\"spec\" and tool=\"sc_todo_start\".".to_string();
+            next_steps = "Proceed with tasks by calling sc_todo_start.".to_string();
         } else {
             phase = "completed";
             status = "finished";
@@ -506,7 +506,7 @@ impl SpecManager {
                         !t.is_empty() && t.to_lowercase() != "none" && t != "*"
                     });
                     if has_real_questions {
-                        return Err(anyhow!("Cannot advance while there are active open questions in the epoch context. Please resolve them using `use mcpx with server=\"spec\" tool=\"sc_epoch\" and openQuestions=\"None\"`."));
+                        return Err(anyhow!("Cannot advance while there are active open questions in the epoch context. Please resolve them by calling `sc_epoch` with openQuestions=\"None\"."));
                     }
                 }
             }
@@ -537,7 +537,7 @@ impl SpecManager {
             if let Ok(marker_time) = chrono::DateTime::parse_from_rfc3339(&marker_time_str) {
                 let now = chrono::Utc::now();
                 if now.signed_duration_since(marker_time).num_milliseconds() < 2000 {
-                    return Err(anyhow!("Approval blocked: Recent feedback was recorded. To prevent misinterpretation of information as approval, you must wait for a separate turn and explicit user approval before calling mcpx with server=\"spec\" and tool=\"sc_approve\"."));
+                    return Err(anyhow!("Approval blocked: Recent feedback was recorded. To prevent misinterpretation of information as approval, you must wait for a separate turn and explicit user approval before calling sc_approve."));
                 }
             }
             fs::remove_file(feedback_marker)?;
@@ -769,7 +769,20 @@ impl SpecManager {
             fs::remove_file(feedback_marker)?;
         }
 
-        Ok(format!("✅ Task {} marked as completed!", task_id))
+        let mut msg = format!("✅ Task {} marked as completed!", task_id);
+        if let Ok(updated) = fs::read_to_string(&tasks_path) {
+            let all_done = match serde_json::from_str::<serde_json::Value>(&updated) {
+                Ok(v) => v["tasks"].as_array().map_or(false, |ts| !ts.is_empty() && ts.iter().all(|t| t["status"] == "completed")),
+                Err(_) => {
+                    let flat = crate::markdown::parser::TaskParser::parse_flat(&updated);
+                    !flat.is_empty() && flat.iter().all(|t| t.completed)
+                }
+            };
+            if all_done {
+                msg.push_str("\nAll tasks complete. Call sc_plan to archive.");
+            }
+        }
+        Ok(msg)
     }
 
     pub fn set_domain(&self, base_dir: &Path, feature_name: Option<&str>, domain: &str, loader: &OpenApiLoader) -> Result<String> {
@@ -884,7 +897,7 @@ impl SpecManager {
         } else if !state.specification.edited {
             message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("specification").unwrap());
         } else if !state.specification.approved && mode != "one-shot" {
-            message = "Specification drafted but not yet approved. Please review and run `use mcpx with server=\"spec\" and tool=\"sc_approve\"` before advancing.".to_string();
+            message = "Specification drafted but not yet approved. Please review and call `sc_approve` before advancing.".to_string();
         } else if !state.tasks.exists {
             if mode == "one-shot" {
                 Self::validate_transition(&feature_path)?;
@@ -907,7 +920,7 @@ impl SpecManager {
         } else if !state.tasks.edited {
             message = format!("Please finish editing {} (remove all <template> tags) before advancing.", loader.get_file_name("tasks").unwrap());
         } else if !state.tasks.approved && mode != "one-shot" {
-            message = "Tasks drafted but not yet approved. Please review and run `use mcpx with server=\"spec\" and tool=\"sc_approve\"` before advancing.".to_string();
+            message = "Tasks drafted but not yet approved. Please review and call `sc_approve` before advancing.".to_string();
         } else {
             let mut all_tasks_complete = false;
             let tasks_file = loader.get_file_name("tasks").unwrap();
@@ -927,7 +940,7 @@ impl SpecManager {
             }
 
             if !all_tasks_complete {
-                let mut msg = "Not all implementation tasks are complete. Proceed with `mcpx with server=\"spec\" and tool=\"sc_todo_start\"` or finish tasks manually.".to_string();
+                let mut msg = "Not all implementation tasks are complete. Proceed by calling `sc_todo_start` or finish tasks manually.".to_string();
                 if let Some(ins) = instruction {
                     msg.push_str(&format!("\n> Received instruction: {}", ins));
                 }
